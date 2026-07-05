@@ -180,6 +180,123 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
 @keyframes toastIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .toast.out { transition: opacity 0.3s, transform 0.3s; opacity: 0; transform: translateX(30px); }
 
+/* Floating Guide Chatbot */
+#guidebot-launcher {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  z-index: 9998;
+  transition: transform 0.2s;
+}
+#guidebot-launcher:hover { transform: scale(1.08); }
+#guidebot-panel {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  height: 460px;
+  max-height: calc(100vh - 130px);
+  background: var(--panel-bg, #12162e);
+  border: 1px solid var(--panel-border-glow);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 9999;
+  backdrop-filter: blur(14px);
+}
+#guidebot-panel.open { display: flex; }
+#guidebot-header {
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#guidebot-close { cursor: pointer; opacity: 0.6; font-size: 14px; }
+#guidebot-close:hover { opacity: 1; }
+#guidebot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.guidebot-msg { max-width: 88%; padding: 8px 11px; border-radius: 10px; }
+.guidebot-msg.bot { background: rgba(255,255,255,0.06); align-self: flex-start; }
+.guidebot-msg.user { background: var(--primary); align-self: flex-end; }
+#guidebot-inputrow { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--panel-border); }
+#guidebot-inputrow input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+#guidebot-inputrow button {
+  background: var(--primary);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  width: 36px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* Device PIN Lock Overlay */
+#pinlock-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 22, 0.97);
+  backdrop-filter: blur(10px);
+  z-index: 100000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#pinlock-overlay.show { display: flex; }
+#pinlock-box {
+  width: 300px;
+  max-width: 90vw;
+  text-align: center;
+  padding: 32px 24px;
+  border: 1px solid var(--panel-border-glow);
+  border-radius: 18px;
+  background: rgba(18, 22, 41, 0.9);
+}
+#pinlock-input {
+  width: 100%;
+  text-align: center;
+  font-size: 20px;
+  letter-spacing: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  outline: none;
+}
+
 .nav-menu {
   padding: 6px 12px;
   display: flex;
@@ -1525,6 +1642,7 @@ textarea {
         <option value="proxy">Secure Proxy / Cloudflare Worker (No Key in Browser)</option>
       </select>
       <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">Both Gemini and Claude keys are remembered separately — switch providers any time without re-typing keys.</div>
+      <div id="settings-cost-line" style="font-size:12px;color:var(--primary);margin-top:8px;line-height:1.4;"></div>
     </div>
 
     <div id="settings-proxy-section" style="display:none">
@@ -1540,7 +1658,10 @@ textarea {
     <div id="settings-key-section" style="display:none">
       <div class="field" style="margin-bottom: 8px;">
         <label class="fl" id="settings-key-label">API Key <span class="tooltip-container">ⓘ<span class="tooltip-text">Your Gemini API Key. Kept client-side in browser local storage and never sent to external servers.</span></span></label>
-        <input type="password" id="settings-api-key" placeholder="Enter key..." />
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="settings-api-key" placeholder="Enter key..." style="flex:1;" />
+          <button class="btn-secondary" type="button" style="padding:0 12px; white-space:nowrap;" onclick="clearProviderKey()">Remove Key</button>
+        </div>
       </div>
       
       <div id="settings-key-help" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4;"></div>
@@ -1639,6 +1760,14 @@ textarea {
           </span>
         </div>
       </div>
+      <button class="btn-sidebar-action" type="button" onclick="openGuide()" style="margin-bottom:8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Reference Guide
+      </button>
+      <button class="btn-sidebar-action" type="button" onclick="openAdminPanel()" style="margin-bottom:8px; opacity:0.75;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Admin Panel
+      </button>
       <button class="btn-sidebar-action" type="button" onclick="openSettings()">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         API Key Settings
@@ -3290,6 +3419,33 @@ initSTT();
 
 
 // Credentials & Settings
+/* ── ADMIN & DEVICE-LOCK CONFIG ──
+   These two constants are baked into the published file so they work
+   identically on every device (your daughter's laptop, phone, etc.)
+   without needing to sync anything between browsers.
+
+   DEFAULT_PROXY_URL: pre-fills the Secure Proxy URL for everyone who
+   loads this file, so family members don't have to type it in.
+
+   ADMIN_PASSPHRASE_HASH: a SHA-256 hash (never the plain passphrase) of
+   your chosen admin passphrase. It unlocks the Admin Panel on ANY device,
+   and acts as a universal "master override" on the device PIN lock
+   screen. Leave both blank to skip this feature entirely — the app
+   works exactly as before.
+
+   TO SET THESE: open the Admin Panel (sidebar footer) once with the
+   fields blank — it will offer a one-time "Set up Admin Access" flow,
+   generate the hash for you, and show you exactly what to paste here
+   before you publish to GitHub. */
+const DEFAULT_PROXY_URL = "";
+const ADMIN_PASSPHRASE_HASH = "";
+
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 let appSettings = {
   apiMode: 'anthropic',
   apiKey: '',
@@ -3348,6 +3504,7 @@ const MODELS = {
 
 // Load saved data on startup
 window.onload = function() {
+  initDeviceLock();
   const savedSettings = localStorage.getItem('cs_settings');
   if (savedSettings) {
     try {
@@ -3569,6 +3726,388 @@ function toggleApiSettingsFields() {
     }
   }
   _settingsPrevMode = mode;
+  const costLine = document.getElementById('settings-cost-line');
+  if (costLine) costLine.textContent = '💰 ' + (COST_TOOLTIPS[mode] || '');
+}
+
+function clearProviderKey() {
+  const mode = document.getElementById('settings-api-mode').value;
+  if (mode !== 'gemini' && mode !== 'anthropic') return;
+  if (!confirm(`Remove your saved ${mode === 'gemini' ? 'Gemini' : 'Claude'} API key from this browser?`)) return;
+  
+  if (!appSettings.keys) appSettings.keys = { gemini: '', anthropic: '' };
+  appSettings.keys[mode] = '';
+  document.getElementById('settings-api-key').value = '';
+  
+  // If this was the active provider, fall back to Sandbox so the app stays usable
+  if (appSettings.apiMode === mode) {
+    appSettings.apiMode = 'mock';
+    appSettings.apiKey = '';
+    appSettings.model = '';
+    document.getElementById('settings-api-mode').value = 'mock';
+    toggleApiSettingsFields();
+  }
+  
+  localStorage.setItem('cs_settings', JSON.stringify(appSettings));
+  updateApiStatusDot();
+  applySettingsUI();
+  showToast(`${mode === 'gemini' ? 'Gemini' : 'Claude'} key removed. Switched to Sandbox mode.`, 'success');
+}
+
+/* ── REFERENCE GUIDE (also used as the chatbot's knowledge base) ── */
+const HELP_GUIDE_TEXT = `
+# Career Suite — Reference Guide
+
+## 1 · Foundation
+
+**Candidate Profile** — Upload one CV per profile (PDF/DOCX/TXT). This unlocks every other tool, since they all read from this CV. "Goals" is an AI-written one-line summary of your likely career direction, inferred from the CV — you can regenerate or edit it in Career Strategy.
+
+**Career Strategy & SWOT** — *Goals* = your target roles/direction. *Strengths/Weaknesses* = internal factors from your CV and self-assessment. *Opportunities/Threats* = external market factors (industry trends, competition for roles). *Why You (General)* = your elevator-pitch value proposition, used across cover letters and outreach. *Why You (Specific)* and *Target JD* = the same but tailored to one job description you paste in.
+
+## 2 · Apply
+
+**CV Tailor & Letters** — Paste a job description; the AI rewrites your CV summary and cover letter to match that specific JD's language and priorities, without inventing new experience.
+
+**Personal Statement** — For University admissions or Job applications. Pick the category, answer the prompt questions (these change depending on category), and the AI drafts a full statement from your answers plus your CV.
+
+**Networking & Outreach** — *LinkedIn Presence*: headline + About summary + skills to pin, generated from your CV. *Outreach Composer*: pick a message type (cold outreach, warm intro, thank-you, follow-up, etc.), add company/role/contact, and get both a short (DM-length) and full (email-length) draft.
+
+## 3 · Prepare & Practice
+
+**STAR Builder** — STAR = Situation, Task, Action, Result. Each story should be one specific example (not a general skill), used to answer "tell me about a time..." interview questions. The "Bank" stores multiple stories tagged by competency, so you can reuse them across applications.
+
+**Interview & Roleplay Coach** — Four modes: *Job Interview* (practice for a specific role), *University Admissions* (Oxbridge-style, standard, or MMI style), *Sales Roleplay* (practice selling to a buyer persona), *Salary Negotiation* (practice negotiating an offer). Each session ends with a scored report, saved under "Past Session Reports" so you can track improvement over time.
+
+## 4 · Decide
+
+**Decision Matrix** — Compare offers, universities, or tenders side by side. You set criteria (e.g. salary, culture, location) and weight them by importance (%); each option gets scored per criterion, and the matrix calculates a weighted total to help you compare objectively — it's a structured aid, not a final answer.
+
+## Settings
+
+**API Mode**: *Sandbox* uses free demo data, no key needed. *Gemini*/*Claude* use your own API key, stored only in your browser. *Secure Proxy* is for admins running a shared Cloudflare Worker so others don't need their own key.
+
+Everything you enter is stored in your own browser's local storage — nothing is uploaded to a server unless you're using Proxy mode with an admin-run Worker.
+`;
+
+function openGuide() {
+  document.getElementById('guidemodal').classList.add('open');
+  const el = document.getElementById('guide-content');
+  if (el && !el.dataset.rendered) {
+    el.innerHTML = DOMPurify.sanitize(marked.parse(HELP_GUIDE_TEXT));
+    el.dataset.rendered = '1';
+  }
+}
+function closeGuide() {
+  document.getElementById('guidemodal').classList.remove('open');
+}
+function askGuideBotFromReference() {
+  closeGuide();
+  const panel = document.getElementById('guidebot-panel');
+  if (!panel.classList.contains('open')) toggleGuideBot();
+}
+
+/* ── FLOATING GUIDE CHATBOT ── */
+let guideBotHistory = [];
+function toggleGuideBot() {
+  const panel = document.getElementById('guidebot-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open') && !guideBotHistory.length) {
+    _appendGuideBotMsg('bot', "Hi! Ask me anything about how Career Suite works — what a field means, which tool to use, or how a module fits together. I'll answer based on the app's reference guide.");
+  }
+}
+function _appendGuideBotMsg(role, text) {
+  const wrap = document.getElementById('guidebot-messages');
+  const div = document.createElement('div');
+  div.className = 'guidebot-msg ' + (role === 'user' ? 'user' : 'bot');
+  if (role === 'bot') {
+    div.innerHTML = DOMPurify.sanitize(marked.parse(text || ''));
+  } else {
+    div.textContent = text;
+  }
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+async function sendGuideBotMessage() {
+  const input = document.getElementById('guidebot-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  _appendGuideBotMsg('user', q);
+  guideBotHistory.push({ role: 'user', content: q });
+  
+  const wrap = document.getElementById('guidebot-messages');
+  const loading = document.createElement('div');
+  loading.className = 'guidebot-msg bot';
+  loading.id = 'guidebot-loading';
+  loading.innerHTML = '<span class="spin"></span>';
+  wrap.appendChild(loading);
+  wrap.scrollTop = wrap.scrollHeight;
+  
+  try {
+    let answer;
+    if (appSettings.apiMode === 'mock') {
+      await new Promise(r => setTimeout(r, 900));
+      answer = "I'm running in Sandbox mode right now, so I can only give a canned reply. Add a free Gemini key (or your Claude key) in Settings and I'll answer your actual question using the reference guide.\n\nMeanwhile, you can open the full **Reference Guide** (button in the sidebar footer) to read about any field directly.";
+    } else {
+      const system = `You are a friendly, concise help assistant embedded in the "Career Suite" app. Answer ONLY using the reference guide below — if the question is unrelated to the app or not covered by the guide, say so briefly and suggest checking the Reference Guide or the relevant tab.
+      Keep answers short (2-5 sentences), plain language, no marketing tone.
+      
+      === REFERENCE GUIDE ===
+      ${HELP_GUIDE_TEXT}
+      === END GUIDE ===`;
+      answer = await runAICallWithHistory(system, guideBotHistory.slice(-10));
+    }
+    document.getElementById('guidebot-loading')?.remove();
+    _appendGuideBotMsg('bot', answer);
+    guideBotHistory.push({ role: 'assistant', content: answer });
+  } catch (err) {
+    document.getElementById('guidebot-loading')?.remove();
+    _appendGuideBotMsg('bot', "Sorry, I couldn't reach the AI provider (" + err.message + "). You can still browse the full Reference Guide from the sidebar.");
+  }
+}
+
+/* ── DEVICE PIN LOCK ── */
+let _pinLockMode = 'unlock'; // 'setup' | 'unlock'
+
+async function initDeviceLock() {
+  const pinHash = localStorage.getItem('cs_device_pin_hash');
+  const skipped = localStorage.getItem('cs_pin_skip') === '1';
+  if (pinHash) {
+    showPinLockScreen('unlock');
+  } else if (!skipped) {
+    showPinLockScreen('setup');
+  }
+  // else: no PIN set and user previously skipped — app opens normally
+}
+
+function showPinLockScreen(mode) {
+  _pinLockMode = mode;
+  const overlay = document.getElementById('pinlock-overlay');
+  const title = document.getElementById('pinlock-title');
+  const sub = document.getElementById('pinlock-sub');
+  const skipLink = document.getElementById('pinlock-skip-link');
+  const forgotLink = document.getElementById('pinlock-forgot-link');
+  const input = document.getElementById('pinlock-input');
+  document.getElementById('pinlock-error').textContent = '';
+  input.value = '';
+  
+  if (mode === 'setup') {
+    title.textContent = "Set a PIN for this device";
+    sub.textContent = "Optional — keeps Career Suite private on this device. At least 4 digits.";
+    skipLink.style.display = 'inline';
+    forgotLink.style.display = 'none';
+  } else {
+    title.textContent = "Enter this device's PIN";
+    sub.textContent = "This device is locked with a PIN.";
+    skipLink.style.display = 'none';
+    forgotLink.style.display = 'inline';
+  }
+  overlay.classList.add('show');
+  setTimeout(() => input.focus(), 50);
+}
+
+function skipPinSetup() {
+  localStorage.setItem('cs_pin_skip', '1');
+  document.getElementById('pinlock-overlay').classList.remove('show');
+}
+
+function showPinLockHint() {
+  const el = document.getElementById('pinlock-error');
+  el.style.color = 'var(--text-secondary)';
+  el.textContent = ADMIN_PASSPHRASE_HASH || localStorage.getItem('cs_admin_passphrase_hash')
+    ? "Ask the app admin for the override passphrase — it also works here."
+    : "No admin override is configured. Clearing this browser's site data will remove the PIN (and all saved profiles on this device).";
+}
+
+async function submitPinLock() {
+  const input = document.getElementById('pinlock-input');
+  const val = input.value.trim();
+  const errEl = document.getElementById('pinlock-error');
+  errEl.style.color = 'var(--danger, #f87171)';
+  
+  if (_pinLockMode === 'setup') {
+    if (val.length < 4) {
+      errEl.textContent = "Please enter at least 4 digits.";
+      return;
+    }
+    const hash = await sha256Hex(val);
+    localStorage.setItem('cs_device_pin_hash', hash);
+    localStorage.removeItem('cs_pin_skip');
+    document.getElementById('pinlock-overlay').classList.remove('show');
+    showToast("Device PIN set. You'll need it next time you open Career Suite here.", 'success');
+    return;
+  }
+  
+  // unlock mode
+  const storedHash = localStorage.getItem('cs_device_pin_hash');
+  const inputHash = await sha256Hex(val);
+  const adminHash = ADMIN_PASSPHRASE_HASH || localStorage.getItem('cs_admin_passphrase_hash') || '';
+  
+  if (inputHash === storedHash || (adminHash && inputHash === adminHash)) {
+    document.getElementById('pinlock-overlay').classList.remove('show');
+  } else {
+    errEl.textContent = "Incorrect PIN. Try again.";
+    input.value = '';
+    input.focus();
+  }
+}
+
+/* ── ADMIN PANEL ── */
+let _adminPlaintext = ''; // held only in memory for this session, used to authenticate toggle calls
+
+function _adminHashConfigured() {
+  return !!(ADMIN_PASSPHRASE_HASH || localStorage.getItem('cs_admin_passphrase_hash'));
+}
+
+function openAdminPanel() {
+  document.getElementById('adminmodal').classList.add('open');
+  const gateView = document.getElementById('admin-locked-view');
+  const panelView = document.getElementById('admin-panel-view');
+  document.getElementById('admin-passphrase-input').value = '';
+  document.getElementById('admin-gate-error').textContent = '';
+  
+  if (!_adminHashConfigured()) {
+    // First-ever use: no passphrase exists anywhere yet — go straight in and prompt setup
+    gateView.style.display = 'none';
+    panelView.style.display = 'block';
+    document.getElementById('admin-setup-help').innerHTML =
+      "⚠️ <strong>No admin passphrase is set yet.</strong> Anyone can open this panel until you set one below. Set it now, then note the hash it gives you.";
+    _prefillAdminPanel();
+  } else {
+    gateView.style.display = 'block';
+    panelView.style.display = 'none';
+    setTimeout(() => document.getElementById('admin-passphrase-input').focus(), 50);
+  }
+}
+
+function closeAdminPanel() {
+  document.getElementById('adminmodal').classList.remove('open');
+}
+
+async function unlockAdminPanel() {
+  const val = document.getElementById('admin-passphrase-input').value;
+  const hash = await sha256Hex(val);
+  const adminHash = ADMIN_PASSPHRASE_HASH || localStorage.getItem('cs_admin_passphrase_hash') || '';
+  
+  if (adminHash && hash === adminHash) {
+    _adminPlaintext = val;
+    document.getElementById('admin-locked-view').style.display = 'none';
+    document.getElementById('admin-panel-view').style.display = 'block';
+    document.getElementById('admin-setup-help').textContent =
+      "This passphrase is only stored as a one-way hash. It unlocks this panel and acts as an override PIN on any device's lock screen.";
+    _prefillAdminPanel();
+  } else {
+    document.getElementById('admin-gate-error').textContent = "Incorrect passphrase.";
+  }
+}
+
+function _prefillAdminPanel() {
+  const urlField = document.getElementById('admin-proxy-url');
+  urlField.value = appSettings.proxyUrl || DEFAULT_PROXY_URL || '';
+  checkFamilyAccessStatus();
+}
+
+function _adminProxyUrl() {
+  const fromField = document.getElementById('admin-proxy-url').value.trim();
+  return fromField || appSettings.proxyUrl || DEFAULT_PROXY_URL || '';
+}
+
+function saveAdminProxyUrl() {
+  const url = document.getElementById('admin-proxy-url').value.trim();
+  if (!url || !/^https?:\/\//i.test(url)) {
+    showToast("Please enter a valid Worker URL (starting with https://).", 'error');
+    return;
+  }
+  appSettings.proxyUrl = url;
+  localStorage.setItem('cs_settings', JSON.stringify(appSettings));
+  showToast("Proxy URL saved. To use it on this device, go to Settings → API Mode → Secure Proxy.", 'success');
+  checkFamilyAccessStatus();
+}
+
+async function checkFamilyAccessStatus() {
+  const statusEl = document.getElementById('admin-toggle-status');
+  const btn = document.getElementById('admin-toggle-btn');
+  const url = _adminProxyUrl();
+  if (!url) {
+    statusEl.textContent = 'No Worker URL configured';
+    statusEl.style.color = 'var(--text-muted)';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+  statusEl.textContent = 'Checking status…';
+  statusEl.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch(url, { method: 'GET' });
+    const data = await r.json();
+    _renderFamilyAccessStatus(data.enabled);
+  } catch (err) {
+    statusEl.textContent = 'Could not reach Worker';
+    statusEl.style.color = 'var(--danger, #f87171)';
+  }
+}
+
+function _renderFamilyAccessStatus(enabled) {
+  const statusEl = document.getElementById('admin-toggle-status');
+  const btn = document.getElementById('admin-toggle-btn');
+  statusEl.textContent = enabled ? '🟢 Family AI Access: ON' : '🔴 Family AI Access: OFF';
+  statusEl.style.color = enabled ? 'var(--success, #34d399)' : 'var(--danger, #f87171)';
+  btn.textContent = enabled ? 'Turn OFF' : 'Turn ON';
+  btn.dataset.currentlyEnabled = enabled ? '1' : '0';
+}
+
+async function toggleFamilyAccess() {
+  const url = _adminProxyUrl();
+  if (!url) { showToast("Set the Worker URL first.", 'error'); return; }
+  if (!_adminPlaintext) {
+    showToast("Please re-enter your admin passphrase (session expired) by closing and reopening the panel.", 'error');
+    return;
+  }
+  const btn = document.getElementById('admin-toggle-btn');
+  btn.disabled = true;
+  const wasEnabled = btn.dataset.currentlyEnabled === '1';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle', adminSecret: _adminPlaintext, setTo: !wasEnabled })
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showToast(data.error || 'Toggle failed — check that your passphrase matches ADMIN_SECRET in the Worker settings.', 'error');
+    } else {
+      _renderFamilyAccessStatus(data.enabled);
+      showToast(data.enabled ? 'Family AI access turned ON.' : 'Family AI access turned OFF — daughter\'s device will fall back until you turn it back on.', 'success');
+    }
+  } catch (err) {
+    showToast("Could not reach the Worker: " + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function generateAdminHash() {
+  const val = document.getElementById('admin-new-passphrase').value;
+  if (!val || val.length < 6) {
+    showToast("Please choose a passphrase of at least 6 characters.", 'error');
+    return;
+  }
+  const hash = await sha256Hex(val);
+  localStorage.setItem('cs_admin_passphrase_hash', hash);
+  _adminPlaintext = val; // usable immediately for toggling in this session
+  
+  const out = document.getElementById('admin-hash-output');
+  out.style.display = 'block';
+  out.innerHTML = `
+    ✅ Saved locally for this browser — you can use the panel here right away.<br><br>
+    <strong>To make this work on every device (e.g. your daughter's laptop):</strong><br>
+    1. Copy this hash: <code style="user-select:all;">${hash}</code><br>
+    2. Paste it as the value of <code>ADMIN_PASSPHRASE_HASH</code> near the top of index.html<br>
+    3. In your Cloudflare Worker settings, set the secret <code>ADMIN_SECRET</code> to the exact passphrase you just typed (not the hash) — that's what authorizes the ON/OFF toggle server-side.<br>
+    4. Re-publish index.html to GitHub.
+  `;
+  document.getElementById('admin-new-passphrase').value = '';
+  showToast("Admin passphrase set for this browser.", 'success');
 }
 
 function saveSettings() {
@@ -3579,16 +4118,20 @@ function saveSettings() {
   if (!appSettings.models) appSettings.models = { gemini: 'gemini-2.5-flash', anthropic: 'claude-sonnet-4-6' };
   
   let key = '', model = '', proxyUrl = appSettings.proxyUrl || '';
+  let effectiveMode = mode;
   
   if (mode === 'gemini' || mode === 'anthropic') {
     key = document.getElementById('settings-api-key').value.trim();
     model = document.getElementById('settings-model').value;
     if (!key) {
-      alert("Please enter a valid API Key.");
-      return;
+      // No key entered — don't silently leave the old key active. Fall back to Sandbox.
+      appSettings.keys[mode] = '';
+      effectiveMode = 'mock';
+      document.getElementById('settings-api-mode').value = 'mock';
+    } else {
+      appSettings.keys[mode] = key;
+      appSettings.models[mode] = model;
     }
-    appSettings.keys[mode] = key;
-    appSettings.models[mode] = model;
   } else if (mode === 'proxy') {
     proxyUrl = document.getElementById('settings-proxy-url').value.trim();
     if (!proxyUrl || !/^https?:\/\//i.test(proxyUrl)) {
@@ -3597,9 +4140,9 @@ function saveSettings() {
     }
   }
   
-  appSettings.apiMode = mode;
-  appSettings.apiKey = key;       // active key for the selected provider
-  appSettings.model = model;      // active model for the selected provider
+  appSettings.apiMode = effectiveMode;
+  appSettings.apiKey = effectiveMode === mode ? key : '';
+  appSettings.model = effectiveMode === mode ? model : '';
   appSettings.proxyUrl = proxyUrl;
   
   updateApiStatusDot();
@@ -3607,7 +4150,11 @@ function saveSettings() {
   
   applySettingsUI();
   closeSettings();
-  showToast(mode === 'mock' ? 'Sandbox mode active (mock data).' : `AI provider saved: ${mode === 'proxy' ? 'Secure Proxy' : mode === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'}`, 'success');
+  if (effectiveMode !== mode) {
+    showToast('No key was entered, so Sandbox / Mock mode has been kept active.', 'info');
+  } else {
+    showToast(effectiveMode === 'mock' ? 'Sandbox mode active (mock data).' : `AI provider saved: ${effectiveMode === 'proxy' ? 'Secure Proxy' : effectiveMode === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'}`, 'success');
+  }
 }
 
 function applySettingsUI() {
@@ -7362,26 +7909,39 @@ function toggleSTT() {
   }
 }
 
+const COST_TOOLTIPS = {
+  mock: "Sandbox / Mock Mode — no API key, $0 cost, uses pre-written demo data instead of live AI.",
+  gemini: "Google Gemini — free tier covers ~1,500 requests/day at $0 cost. Typically enough for regular personal use; heavy daily use may hit the rate limit.",
+  anthropic: "Anthropic Claude — pay-as-you-go. Roughly $0.01–0.05 per generation on Sonnet, depending on length; a full coaching session may cost a few cents.",
+  proxy: "Secure Proxy — cost depends on whichever provider/key the admin configured on the server side. No key is stored in this browser."
+};
+
 function updateApiStatusDot() {
   const dot = document.getElementById('api-status-dot');
   const txt = document.getElementById('api-status-text');
   if (!dot || !txt) return;
+  const wrap = txt.parentElement;
+  
   if (appSettings.apiMode === 'mock') {
     dot.style.background = '#fbbf24';
     txt.style.color = '#fbbf24';
     txt.textContent = 'Demo mode';
+    if (wrap) wrap.title = COST_TOOLTIPS.mock;
   } else if (appSettings.apiMode === 'proxy' && appSettings.proxyUrl) {
     dot.style.background = '#34d399';
     txt.style.color = '#34d399';
-    txt.textContent = 'Proxy ready';
+    txt.textContent = 'AI Ready · Proxy';
+    if (wrap) wrap.title = COST_TOOLTIPS.proxy;
   } else if (appSettings.apiKey && appSettings.apiKey.length > 8) {
     dot.style.background = '#34d399';
     txt.style.color = '#34d399';
-    txt.textContent = appSettings.apiMode === 'anthropic' ? 'Claude ready' : 'Gemini ready';
+    txt.textContent = appSettings.apiMode === 'anthropic' ? 'AI Ready · Claude' : 'AI Ready · Gemini';
+    if (wrap) wrap.title = COST_TOOLTIPS[appSettings.apiMode] || '';
   } else {
     dot.style.background = '#f87171';
     txt.style.color = '#f87171';
     txt.textContent = 'No key';
+    if (wrap) wrap.title = 'No AI provider configured yet — click to add a free Gemini key or a Claude key in Settings.';
   }
 }
 
@@ -7943,5 +8503,105 @@ function redistributeWeightsEvenly() {
 }
 
 </script>
+<!-- REFERENCE GUIDE MODAL -->
+<div class="mbg" id="guidemodal" onclick="if(event.target===this)closeGuide()">
+  <div class="mbox" style="max-width:720px; max-height:85vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div class="mtitle">📖 Career Suite Reference Guide</div>
+        <div class="mdesc">What each field means, and how the modules fit together.</div>
+      </div>
+      <button class="btn-secondary" type="button" style="padding:4px 12px; font-size:12px;" onclick="askGuideBotFromReference()">💬 Ask the Guide instead</button>
+    </div>
+    <div id="guide-content" style="overflow-y:auto; flex:1; padding-right:6px; font-size:13.5px; line-height:1.7; margin-top:8px;"></div>
+    <div class="mfoot" style="justify-content:flex-end;">
+      <button class="btn-action" type="button" onclick="closeGuide()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- FLOATING GUIDE CHATBOT -->
+<div id="guidebot-launcher" onclick="toggleGuideBot()" title="Ask a question about the app">
+  <span id="guidebot-launcher-icon">💬</span>
+</div>
+<div id="guidebot-panel">
+  <div id="guidebot-header">
+    <span>💬 App Guide Assistant</span>
+    <span id="guidebot-close" onclick="toggleGuideBot()">✕</span>
+  </div>
+  <div id="guidebot-messages"></div>
+  <div id="guidebot-inputrow">
+    <input type="text" id="guidebot-input" placeholder="e.g. What does SWOT mean here?" onkeydown="if(event.key==='Enter')sendGuideBotMessage()" />
+    <button onclick="sendGuideBotMessage()">➤</button>
+  </div>
+</div>
+
+<!-- DEVICE PIN LOCK OVERLAY -->
+<div id="pinlock-overlay">
+  <div id="pinlock-box">
+    <div style="font-size:32px; margin-bottom:8px;">🔒</div>
+    <h3 id="pinlock-title" style="margin-bottom:6px;">Enter this device's PIN</h3>
+    <p id="pinlock-sub" style="font-size:12.5px; color:var(--text-secondary); margin-bottom:16px;">This keeps Career Suite private on this device.</p>
+    <input type="password" id="pinlock-input" inputmode="numeric" maxlength="12" placeholder="4-digit PIN" onkeydown="if(event.key==='Enter')submitPinLock()" />
+    <div id="pinlock-error" style="color:var(--danger, #f87171); font-size:12px; margin-top:8px; min-height:16px;"></div>
+    <button class="btn-action" style="width:100%; margin-top:14px;" onclick="submitPinLock()">Unlock</button>
+    <div style="margin-top:14px; font-size:11.5px;">
+      <span id="pinlock-skip-link" style="color:var(--text-muted); cursor:pointer; text-decoration:underline;" onclick="skipPinSetup()">Skip for now</span>
+      <span id="pinlock-forgot-link" style="color:var(--text-muted); cursor:pointer; text-decoration:underline; display:none;" onclick="showPinLockHint()">Forgot your PIN?</span>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL MODAL -->
+<div class="mbg" id="adminmodal" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="mbox">
+    <div id="admin-locked-view">
+      <div class="mtitle">🛡️ Admin Panel</div>
+      <div class="mdesc" id="admin-gate-desc">Enter the admin passphrase to continue.</div>
+      <div class="field">
+        <label class="fl">Admin Passphrase</label>
+        <input type="password" id="admin-passphrase-input" placeholder="Enter passphrase..." onkeydown="if(event.key==='Enter')unlockAdminPanel()" />
+      </div>
+      <div id="admin-gate-error" style="color:var(--danger,#f87171); font-size:12px; margin-bottom:8px;"></div>
+      <div class="mfoot" style="justify-content:flex-end;">
+        <button class="btn-secondary" type="button" onclick="closeAdminPanel()">Cancel</button>
+        <button class="btn-action" type="button" onclick="unlockAdminPanel()">Unlock</button>
+      </div>
+    </div>
+
+    <div id="admin-panel-view" style="display:none;">
+      <div class="mtitle">🛡️ Admin Panel</div>
+      <div class="mdesc">Controls only you should have access to.</div>
+
+      <div class="glass-card" style="margin-bottom:14px;">
+        <h4 style="font-weight:700; margin-bottom:8px;">👪 Family AI Access</h4>
+        <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:10px;">Requires a Secure Proxy Worker connected below. Toggling this OFF immediately blocks live AI calls through the proxy on every device — including your daughter's — without you touching Cloudflare.</p>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div id="admin-toggle-status" style="font-weight:700; font-size:13px;">Checking status…</div>
+          <button class="btn-action" id="admin-toggle-btn" style="padding:6px 16px; font-size:12.5px;" onclick="toggleFamilyAccess()">Toggle</button>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-bottom:14px;">
+        <h4 style="font-weight:700; margin-bottom:8px;">🔌 Secure Proxy Worker URL</h4>
+        <input type="text" id="admin-proxy-url" placeholder="https://career-suite-proxy.you.workers.dev" />
+        <button class="btn-secondary" style="margin-top:8px; font-size:12px; padding:5px 12px;" onclick="saveAdminProxyUrl()">Save URL</button>
+      </div>
+
+      <div class="glass-card" style="margin-bottom:0;">
+        <h4 style="font-weight:700; margin-bottom:8px;">🔑 Admin Passphrase Setup</h4>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;" id="admin-setup-help">This passphrase is only stored as a one-way hash. It unlocks this panel and acts as an override PIN on any device's lock screen.</p>
+        <input type="password" id="admin-new-passphrase" placeholder="Set a new admin passphrase..." />
+        <button class="btn-secondary" style="margin-top:8px; font-size:12px; padding:5px 12px;" onclick="generateAdminHash()">Generate Hash to Publish</button>
+        <div id="admin-hash-output" style="display:none; margin-top:10px; font-size:11.5px; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; word-break:break-all;"></div>
+      </div>
+
+      <div class="mfoot" style="justify-content:flex-end; margin-top:16px;">
+        <button class="btn-secondary" type="button" onclick="closeAdminPanel()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
