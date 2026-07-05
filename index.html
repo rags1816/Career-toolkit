@@ -4040,20 +4040,61 @@ async function checkFamilyAccessStatus() {
   try {
     const r = await fetch(url, { method: 'GET' });
     const data = await r.json();
-    _renderFamilyAccessStatus(data.enabled);
+    _renderFamilyAccessStatus(data.enabled, data.usageToday, data.dailyLimit);
   } catch (err) {
     statusEl.textContent = 'Could not reach Worker';
     statusEl.style.color = 'var(--danger, #f87171)';
   }
 }
 
-function _renderFamilyAccessStatus(enabled) {
+function _renderFamilyAccessStatus(enabled, usageToday, dailyLimit) {
   const statusEl = document.getElementById('admin-toggle-status');
   const btn = document.getElementById('admin-toggle-btn');
   statusEl.textContent = enabled ? '🟢 Family AI Access: ON' : '🔴 Family AI Access: OFF';
   statusEl.style.color = enabled ? 'var(--success, #34d399)' : 'var(--danger, #f87171)';
   btn.textContent = enabled ? 'Turn OFF' : 'Turn ON';
   btn.dataset.currentlyEnabled = enabled ? '1' : '0';
+  
+  if (typeof usageToday === 'number' && typeof dailyLimit === 'number') {
+    const usageLine = document.getElementById('admin-usage-line');
+    const usageBar = document.getElementById('admin-usage-bar');
+    const limitInput = document.getElementById('admin-daily-limit-input');
+    const pct = Math.min(100, Math.round((usageToday / dailyLimit) * 100));
+    usageLine.textContent = `Usage today: ${usageToday} / ${dailyLimit} requests (resets at midnight UTC)`;
+    usageBar.style.width = pct + '%';
+    usageBar.style.background = pct >= 90 ? 'var(--danger, #f87171)' : pct >= 60 ? 'var(--warning, #fbbf24)' : 'var(--primary)';
+    if (document.activeElement !== limitInput) limitInput.value = dailyLimit;
+  }
+}
+
+async function saveDailyLimit() {
+  const url = _adminProxyUrl();
+  if (!url) { showToast("Set the Worker URL first.", 'error'); return; }
+  if (!_adminPlaintext) {
+    showToast("Please re-enter your admin passphrase (session expired) by closing and reopening the panel.", 'error');
+    return;
+  }
+  const val = parseInt(document.getElementById('admin-daily-limit-input').value, 10);
+  if (!Number.isFinite(val) || val < 1 || val > 5000) {
+    showToast("Enter a limit between 1 and 5000.", 'error');
+    return;
+  }
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setLimit', adminSecret: _adminPlaintext, limit: val })
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showToast(data.error || 'Could not update the limit.', 'error');
+    } else {
+      _renderFamilyAccessStatus(data.enabled, data.usageToday, data.dailyLimit);
+      showToast(`Daily limit set to ${data.dailyLimit} requests.`, 'success');
+    }
+  } catch (err) {
+    showToast("Could not reach the Worker: " + err.message, 'error');
+  }
 }
 
 async function toggleFamilyAccess() {
@@ -4076,7 +4117,7 @@ async function toggleFamilyAccess() {
     if (!r.ok) {
       showToast(data.error || 'Toggle failed — check that your passphrase matches ADMIN_SECRET in the Worker settings.', 'error');
     } else {
-      _renderFamilyAccessStatus(data.enabled);
+      _renderFamilyAccessStatus(data.enabled, data.usageToday, data.dailyLimit);
       showToast(data.enabled ? 'Family AI access turned ON.' : 'Family AI access turned OFF — daughter\'s device will fall back until you turn it back on.', 'success');
     }
   } catch (err) {
@@ -8579,6 +8620,17 @@ function redistributeWeightsEvenly() {
         <div style="display:flex; align-items:center; gap:12px;">
           <div id="admin-toggle-status" style="font-weight:700; font-size:13px;">Checking status…</div>
           <button class="btn-action" id="admin-toggle-btn" style="padding:6px 16px; font-size:12.5px;" onclick="toggleFamilyAccess()">Toggle</button>
+        </div>
+        <div style="margin-top:14px; border-top:1px solid var(--panel-border); padding-top:12px;">
+          <div id="admin-usage-line" style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">Usage: —</div>
+          <div style="background:rgba(255,255,255,0.08); border-radius:6px; height:8px; overflow:hidden;">
+            <div id="admin-usage-bar" style="background:var(--primary); height:100%; width:0%; transition:width 0.3s;"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+            <label class="fl" style="margin:0; font-size:12px;">Daily limit:</label>
+            <input type="number" id="admin-daily-limit-input" min="1" max="5000" style="width:80px; padding:4px 8px; font-size:12.5px;" placeholder="50" />
+            <button class="btn-secondary" style="padding:3px 10px; font-size:11.5px;" onclick="saveDailyLimit()">Update</button>
+          </div>
         </div>
       </div>
 

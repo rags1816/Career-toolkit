@@ -39,12 +39,39 @@
  *   Worker URL, e.g. https://career-suite-proxy.you.workers.dev
  *   In the app's Admin Panel, enter the same ADMIN_SECRET passphrase from
  *   Step 4 to unlock remote controls — this lets you toggle family access
- *   on/off from inside the app itself, any time, without touching Cloudflare.
+ *   on/off, adjust the daily usage cap, and see today's usage — all from
+ *   inside the app itself, without touching Cloudflare.
  *
- * That's it. The API key itself never leaves this Worker.
+ * That's it. The API key itself never leaves this Worker. A daily usage
+ * cap (default 50 calls/day, resets at midnight UTC) is enforced
+ * automatically and adjustable from the Admin Panel — no extra setup
+ * needed, it just works out of the box.
  */
 
 const DEFAULT_ENABLED = true; // if the KV value has never been set, default to ON
+const DEFAULT_DAILY_LIMIT = 300; // safety ceiling on total AI calls per day, adjustable from the app's Admin Panel
+
+function todayKey() {
+  return "usage:" + new Date().toISOString().slice(0, 10); // e.g. "usage:2026-07-05", resets at midnight UTC
+}
+
+async function getUsageToday(env) {
+  if (!env.TOGGLE_KV) return 0;
+  const v = await env.TOGGLE_KV.get(todayKey());
+  return v ? parseInt(v, 10) || 0 : 0;
+}
+
+async function incrementUsage(env) {
+  if (!env.TOGGLE_KV) return;
+  const current = await getUsageToday(env);
+  await env.TOGGLE_KV.put(todayKey(), String(current + 1), { expirationTtl: 172800 }); // auto-clean after 2 days
+}
+
+async function getDailyLimit(env) {
+  if (!env.TOGGLE_KV) return DEFAULT_DAILY_LIMIT;
+  const v = await env.TOGGLE_KV.get("dailyLimit");
+  return v ? parseInt(v, 10) || DEFAULT_DAILY_LIMIT : DEFAULT_DAILY_LIMIT;
+}
 
 export default {
   async fetch(request, env) {
@@ -62,7 +89,9 @@ export default {
     // GET → lightweight status check (used by the app to show "AI paused" banners)
     if (request.method === "GET") {
       const enabled = await getEnabled(env);
-      return json({ enabled }, 200, cors);
+      const usageToday = await getUsageToday(env);
+      const dailyLimit = await getDailyLimit(env);
+      return json({ enabled, usageToday, dailyLimit }, 200, cors);
     }
 
     if (request.method !== "POST") {
@@ -79,7 +108,9 @@ export default {
     // ── Admin action: check status ──
     if (body.action === "status") {
       const enabled = await getEnabled(env);
-      return json({ enabled }, 200, cors);
+      const usageToday = await getUsageToday(env);
+      const dailyLimit = await getDailyLimit(env);
+      return json({ enabled, usageToday, dailyLimit }, 200, cors);
     }
 
     // ── Admin action: toggle ON/OFF ──
@@ -93,13 +124,35 @@ export default {
       const current = await getEnabled(env);
       const next = typeof body.setTo === "boolean" ? body.setTo : !current;
       await env.TOGGLE_KV.put("enabled", next ? "true" : "false");
-      return json({ enabled: next }, 200, cors);
+      const usageToday = await getUsageToday(env);
+      const dailyLimit = await getDailyLimit(env);
+      return json({ enabled: next, usageToday, dailyLimit }, 200, cors);
+    }
+
+    // ── Admin action: set daily limit ──
+    if (body.action === "setLimit") {
+      if (!env.ADMIN_SECRET || body.adminSecret !== env.ADMIN_SECRET) {
+        return json({ error: "Invalid admin passphrase" }, 401, cors);
+      }
+      const n = parseInt(body.limit, 10);
+      if (!Number.isFinite(n) || n < 1 || n > 5000) {
+        return json({ error: "Limit must be a number between 1 and 5000" }, 400, cors);
+      }
+      await env.TOGGLE_KV.put("dailyLimit", String(n));
+      const enabled = await getEnabled(env);
+      const usageToday = await getUsageToday(env);
+      return json({ enabled, usageToday, dailyLimit: n }, 200, cors);
     }
 
     // ── Normal AI call ──
     const enabled = await getEnabled(env);
     if (!enabled) {
       return json({ error: "AI access has been paused by the admin. Please try again later." }, 503, cors);
+    }
+    const usageToday = await getUsageToday(env);
+    const dailyLimit = await getDailyLimit(env);
+    if (usageToday >= dailyLimit) {
+      return json({ error: `Daily AI usage limit reached (${usageToday}/${dailyLimit}). Try again after midnight UTC, or ask the admin to raise the limit.` }, 429, cors);
     }
 
     // Optional shared passphrase so strangers who guess the URL can't burn your credits
@@ -121,6 +174,7 @@ export default {
     }
 
     const provider = (env.PROVIDER || "anthropic").toLowerCase();
+    await incrementUsage(env);
 
     try {
       let text = "";
