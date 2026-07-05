@@ -199,6 +199,26 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
   transition: transform 0.2s;
 }
 #guidebot-launcher:hover { transform: scale(1.08); }
+#guidebot-label {
+  position: fixed;
+  bottom: 34px;
+  right: 90px;
+  background: rgba(18, 22, 41, 0.95);
+  border: 1px solid var(--panel-border-glow);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  cursor: pointer;
+  z-index: 9998;
+  white-space: nowrap;
+  opacity: 0;
+  animation: guidebotLabelIn 0.4s ease 1s forwards, guidebotLabelOut 0.4s ease 7s forwards;
+}
+@keyframes guidebotLabelIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes guidebotLabelOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 #guidebot-panel {
   position: fixed;
   bottom: 90px;
@@ -1688,7 +1708,7 @@ textarea {
   <div class="sb-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar(false)"></div>
   <!-- Sidebar -->
   <div class="sb">
-    <div class="sb-hdr" onclick="goHome()" title="Go to Dashboard Home">
+    <div class="sb-hdr" onclick="_logoClickHandler()" title="Go to Dashboard Home">
       <div class="logo">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       </div>
@@ -1763,10 +1783,6 @@ textarea {
       <button class="btn-sidebar-action" type="button" onclick="openGuide()" style="margin-bottom:8px;">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Reference Guide
-      </button>
-      <button class="btn-sidebar-action" type="button" onclick="openAdminPanel()" style="margin-bottom:8px; opacity:0.75;">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        Admin Panel
       </button>
       <button class="btn-sidebar-action" type="button" onclick="openSettings()">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -3951,6 +3967,30 @@ async function submitPinLock() {
     input.focus();
   }
 }
+
+/* ── HIDDEN ADMIN PANEL ENTRY ──
+   No visible button, so family members using the app don't see an
+   invitation to poke at admin controls. Two ways in, both known only to
+   you: click the sidebar logo 5 times quickly, or press Ctrl+Shift+A. */
+let _logoClickCount = 0;
+let _logoClickTimer = null;
+function _logoClickHandler() {
+  _logoClickCount++;
+  clearTimeout(_logoClickTimer);
+  _logoClickTimer = setTimeout(() => { _logoClickCount = 0; }, 1200);
+  if (_logoClickCount >= 5) {
+    _logoClickCount = 0;
+    openAdminPanel();
+  } else {
+    goHome();
+  }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+    e.preventDefault();
+    openAdminPanel();
+  }
+});
 
 /* ── ADMIN PANEL ── */
 let _adminPlaintext = ''; // held only in memory for this session, used to authenticate toggle calls
@@ -8562,9 +8602,10 @@ function redistributeWeightsEvenly() {
 </div>
 
 <!-- FLOATING GUIDE CHATBOT -->
-<div id="guidebot-launcher" onclick="toggleGuideBot()" title="Ask a question about the app">
-  <span id="guidebot-launcher-icon">💬</span>
+<div id="guidebot-launcher" onclick="toggleGuideBot()" title="Ask the App Guide — questions about how Career Suite works">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
 </div>
+<div id="guidebot-label" onclick="toggleGuideBot()">Need help? Ask me</div>
 <div id="guidebot-panel">
   <div id="guidebot-header">
     <span>💬 App Guide Assistant</span>
