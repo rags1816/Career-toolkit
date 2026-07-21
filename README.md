@@ -28,6 +28,12 @@ via GitHub Pages]
 
 [Fill in once finalised]
 
+## Development note
+
+Development assisted by Claude Code (Anthropic) under my direction. The
+methodology, product design, and domain expertise reflected in this tool
+are my own — see `METHODOLOGY.md` for the original framework.
+
 ## Related
 
 See [`METHODOLOGY.md`](./METHODOLOGY.md) for the evidence-mapping framework
