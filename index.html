@@ -3913,9 +3913,16 @@ I was tasked to establish global category management for professional services, 
 - Successfully offloaded administrative and transactional workloads, boosting core team efficiency by 30%.`
       };
     } else {
-      const system = `You are an executive resume writer and career strategist. Read the candidate's CV.
-      Generate a JSON object containing the following keys:
-      - "personalStatement": A comprehensive, structured Personal Statement written in the first person ("I"). It MUST contain exactly the following 8 sections with these exact Markdown subheadings:
+      // Each section is generated as its own plain-text call rather than one combined
+      // JSON blob — the combined version could exceed max_tokens before the JSON closed,
+      // producing an unparseable truncated response. Same content/sections as before,
+      // just requested separately so no single call is anywhere near the token cap.
+      const orgNameNote = `CRITICAL: Ensure ALL company or organisation names in the generated text (like "Home Office", "Ministry of Justice", "Monzo", "BP", "Castrol", "NESO") are replaced with generic terms (e.g. "a major energy grid operator" for NESO, "a global energy enterprise" for BP, "a major industrial manufacturing firm" for Castrol, "[Organisation Name]" or "your department" for target organisations). Do not include any specific company/organisation brand names.`;
+
+      const cvForBaseline = (user.cv || '').split(/\s+/).slice(0, 1500).join(' ');
+      const prompt = `Candidate CV:\n${cvForBaseline}`;
+
+      const statementSystem = `You are an executive resume writer and career strategist. Read the candidate's CV and write a comprehensive, structured Personal Statement written in the first person ("I"). It MUST contain exactly the following 8 sections with these exact Markdown subheadings:
         ### **Why I am Applying**
         [A paragraph about their career trajectory, public sector digital product management, and motivation for public sector/enterprise leadership]
         ### **Product Management & Roadmap Leadership**
@@ -3933,21 +3940,30 @@ I was tasked to establish global category management for professional services, 
         ### **Why This Role**
         [A closing statement summarizing their unique value proposition and alignment with merit-based frameworks]
 
-      - "coverLetter": A generic, high-impact cover letter. It must be written in an authentic, intellectually honest, and professionally mature tone. It should:
+      ${orgNameNote}
+      Return only the Personal Statement text with those exact Markdown subheadings. Do not wrap it in JSON or markdown codeblocks, and do not add any preamble or closing remarks.`;
+
+      const letterSystem = `You are an executive resume writer and career strategist. Read the candidate's CV and write a generic, high-impact cover letter. It must be written in an authentic, intellectually honest, and professionally mature tone. It should:
         1. Explicitly state their transition/focus (e.g. acknowledging B2B/enterprise/public sector background vs consumer focus).
         2. Highlight key achievements (procurement platform rollouts, category transformations, supply chain system builds).
         3. Explain how their experience translates to leadership.
         4. Use generic placeholders like "[Company Name]" or "your organisation" instead of specific names like "Home Office", "Ministry of Justice", or "Monzo".
 
-      - "baselineSTAR": A strong, baseline STAR story from their CV. It must be structured with Situation, Task, Action, and Result headers.
+      ${orgNameNote}
+      Return only the cover letter text. Do not wrap it in JSON or markdown codeblocks, and do not add any preamble or closing remarks.`;
 
-      CRITICAL: Ensure ALL company or organisation names in the generated text (like "Home Office", "Ministry of Justice", "Monzo", "BP", "Castrol", "NESO") are replaced with generic terms (e.g. "a major energy grid operator" for NESO, "a global energy enterprise" for BP, "a major industrial manufacturing firm" for Castrol, "[Organisation Name]" or "your department" for target organisations). Do not include any specific company/organisation brand names.
-      Return raw JSON only matching this structure. Do not wrap in markdown codeblocks.`;
-      
-      const cvForBaseline = (user.cv || '').split(/\s+/).slice(0, 1500).join(' ');
-      const prompt = `Candidate CV:\n${cvForBaseline}`;
-      resultText = await runAICall(system, prompt, true);
-      payload = parseSafeJSON(resultText);
+      const starSystem = `You are an executive resume writer and career strategist. Read the candidate's CV and write a strong, baseline STAR story from it. It must be structured with Situation, Task, Action, and Result headers.
+
+      ${orgNameNote}
+      Return only the STAR story text. Do not wrap it in JSON or markdown codeblocks, and do not add any preamble or closing remarks.`;
+
+      const personalStatement = await runAICall(statementSystem, prompt, false);
+      resultText = personalStatement;
+      const coverLetter = await runAICall(letterSystem, prompt, false);
+      resultText += '\n\n---\n\n' + coverLetter;
+      const baselineSTAR = await runAICall(starSystem, prompt, false);
+      resultText += '\n\n---\n\n' + baselineSTAR;
+      payload = { personalStatement, coverLetter, baselineSTAR };
     }
     
     if (!payload) {
