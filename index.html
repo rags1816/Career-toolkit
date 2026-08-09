@@ -1427,6 +1427,43 @@ textarea {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.7); }
 }
+
+/* Toast notifications (used by the Secure Proxy / Admin Panel flows) */
+#toast-container {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(18, 22, 41, 0.95);
+  border: 1px solid var(--panel-border-glow);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: toastIn 0.25s ease;
+  backdrop-filter: blur(12px);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.toast.error { border-color: var(--danger-border); background: rgba(50, 20, 26, 0.95); }
+.toast.success { border-color: var(--success-border); }
+.toast .toast-x { cursor: pointer; opacity: 0.6; font-size: 14px; flex-shrink: 0; margin-left: auto; }
+.toast .toast-x:hover { opacity: 1; }
+@keyframes toastIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast.out { transition: opacity 0.3s, transform 0.3s; opacity: 0; transform: translateX(30px); }
 </style>
 <!-- DOMPurify: sanitise AI output before innerHTML injection -->
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
@@ -1546,7 +1583,15 @@ textarea {
         <option value="mock">Sandbox / Mock Mode (No Key Needed)</option>
         <option value="gemini">Google Gemini API</option>
         <option value="anthropic">Anthropic Claude API</option>
+        <option value="proxy">Secure Proxy / Cloudflare Worker (No Key in Browser)</option>
       </select>
+    </div>
+
+    <div id="settings-proxy-section" style="display:none">
+      <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+        ✅ Connected to your family's secure AI service — nothing else to set up here. Click Save Configuration below to use it.
+      </div>
+      <input type="hidden" id="settings-proxy-url" />
     </div>
 
     <div id="settings-key-section" style="display:none">
@@ -1575,11 +1620,75 @@ textarea {
   </div>
 </div>
 
+<!-- ADMIN PANEL MODAL (hidden entry: Ctrl+Shift+A, or click the sidebar logo 5x quickly) -->
+<div class="mbg" id="adminmodal" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="mbox">
+    <div id="admin-locked-view">
+      <div class="mtitle">🛡️ Admin Panel</div>
+      <div class="mdesc" id="admin-gate-desc">Enter the admin passphrase to continue.</div>
+      <div class="field">
+        <label class="fl">Admin Passphrase</label>
+        <input type="password" id="admin-passphrase-input" placeholder="Enter passphrase..." onkeydown="if(event.key==='Enter')unlockAdminPanel()" />
+      </div>
+      <div id="admin-gate-error" style="color:var(--danger,#f87171); font-size:12px; margin-bottom:8px;"></div>
+      <div class="mfoot" style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn-secondary" type="button" onclick="closeAdminPanel()">Cancel</button>
+        <button class="btn-action" type="button" onclick="unlockAdminPanel()">Unlock</button>
+      </div>
+    </div>
+
+    <div id="admin-panel-view" style="display:none;">
+      <div class="mtitle">🛡️ Admin Panel</div>
+      <div class="mdesc" id="admin-setup-help">This passphrase is only stored as a one-way hash. It unlocks this panel.</div>
+
+      <div class="field">
+        <label class="fl">Secure Proxy (Cloudflare Worker) URL</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="admin-proxy-url" placeholder="https://your-worker.workers.dev" style="flex:1;" oninput="checkFamilyAccessStatus()" />
+          <button class="btn-secondary" type="button" style="padding:0 12px; white-space:nowrap;" onclick="saveAdminProxyUrl()">Save URL</button>
+        </div>
+      </div>
+
+      <div style="margin: 16px 0; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+        <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:10px;">Requires a Secure Proxy Worker connected above. Toggling this OFF immediately blocks live AI calls through the proxy on every device — including family members' — without touching Cloudflare.</p>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <div id="admin-toggle-status" style="font-weight:700; font-size:13px;">Checking status…</div>
+          <button class="btn-action" id="admin-toggle-btn" style="padding:6px 16px; font-size:12.5px;" onclick="toggleFamilyAccess()">Toggle</button>
+        </div>
+        <div id="admin-usage-line" style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">Usage: —</div>
+        <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; margin-bottom:12px;">
+          <div id="admin-usage-bar" style="height:100%; width:0%; background:var(--primary); transition:width 0.3s;"></div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="fl">Daily request limit</label>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="admin-daily-limit-input" min="1" max="5000" style="flex:1;" />
+            <button class="btn-secondary" type="button" style="padding:0 12px; white-space:nowrap;" onclick="saveDailyLimit()">Set Limit</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="fl">Set / change admin passphrase</label>
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="admin-new-passphrase" placeholder="New passphrase (min 6 chars)..." style="flex:1;" />
+          <button class="btn-secondary" type="button" style="padding:0 12px; white-space:nowrap;" onclick="generateAdminHash()">Set</button>
+        </div>
+        <div id="admin-hash-output" style="display:none; margin-top:10px; font-size:12px; color:var(--text-secondary); line-height:1.5;"></div>
+      </div>
+
+      <div class="mfoot" style="display:flex; justify-content:flex-end;">
+        <button class="btn-secondary" type="button" onclick="closeAdminPanel()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
   <div class="sb-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar(false)"></div>
   <!-- Sidebar -->
   <div class="sb">
-    <div class="sb-hdr" onclick="goHome()" title="Go to Dashboard Home">
+    <div class="sb-hdr" onclick="_logoClickHandler()" title="Go to Dashboard Home">
       <div class="logo">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       </div>
@@ -3139,11 +3248,57 @@ function initSTT() {
 initSTT();
 
 
+/* ── SECURE PROXY / ADMIN CONFIG ──
+   DEFAULT_PROXY_URL: pre-fills the Secure Proxy URL for everyone who
+   selects "Secure Proxy" mode, so family members don't need to type or
+   know the Worker URL — just select the mode and save.
+
+   ADMIN_PASSPHRASE_HASH: a SHA-256 hash (never the plain passphrase) of
+   the admin passphrase. It unlocks the Admin Panel (open it via
+   Ctrl+Shift+A, or by clicking the sidebar logo 5 times quickly).
+
+   TO SET/CHANGE THESE: open the Admin Panel with the fields blank — it
+   offers a one-time "Set up Admin Access" flow that generates the hash
+   for you and shows exactly what to paste here before publishing. */
+const DEFAULT_PROXY_URL = "https://career-suite-proxy.lvijayaraghavan.workers.dev";
+const ADMIN_PASSPHRASE_HASH = "654cb1810651a0fec965a3f3a0c67cf45900632d4fda15c1ab624c21b1f33a3e";
+
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* Toast helper for Secure Proxy / Admin Panel feedback (non-blocking, unlike alert()) */
+function showToast(msg, type = 'info', duration = 5000) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
+  const icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+  t.innerHTML = `<span style="flex-shrink:0">${icon}</span><span style="flex:1">${String(msg).replace(/</g,'&lt;')}</span><span class="toast-x">✕</span>`;
+  t.querySelector('.toast-x').onclick = () => dismiss();
+  container.appendChild(t);
+  let dismissed = false;
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 320);
+  }
+  setTimeout(dismiss, duration);
+}
+
 // Credentials & Settings
 let appSettings = {
   apiMode: 'anthropic',
   apiKey: '',
-  model: 'claude-sonnet-4-6'
+  model: 'claude-sonnet-4-6',
+  proxyUrl: ''
 };
 
 const MODELS = {
@@ -3312,12 +3467,22 @@ function toggleApiSettingsFields() {
   const keyLabel = document.getElementById('settings-key-label');
   const helpText = document.getElementById('settings-key-help');
   const modelSelect = document.getElementById('settings-model');
-  
-  if (mode === 'mock') {
+  const proxySection = document.getElementById('settings-proxy-section');
+  const testBtn = document.getElementById('test-api-btn');
+
+  proxySection.style.display = mode === 'proxy' ? 'block' : 'none';
+  if (testBtn) testBtn.style.display = mode === 'proxy' ? 'none' : 'inline-block';
+
+  if (mode === 'proxy') {
+    const hiddenUrlField = document.getElementById('settings-proxy-url');
+    if (hiddenUrlField) hiddenUrlField.value = appSettings.proxyUrl || DEFAULT_PROXY_URL || '';
+  }
+
+  if (mode === 'mock' || mode === 'proxy') {
     keySection.style.display = 'none';
   } else {
     keySection.style.display = 'block';
-    
+
     if (mode === 'gemini') {
       keyLabel.textContent = 'Gemini API Key';
       helpText.innerHTML = `Get a <strong>free Gemini API Key</strong> from <a href="https://aistudio.google.com/" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 500;">Google AI Studio</a>. The free tier costs <strong>$0</strong> and supports up to 1,500 requests per day.`;
@@ -3345,21 +3510,29 @@ function saveSettings() {
   const mode = document.getElementById('settings-api-mode').value;
   const key = document.getElementById('settings-api-key').value.trim();
   let model = '';
-  
-  if (mode !== 'mock') {
+  let proxyUrl = appSettings.proxyUrl || '';
+
+  if (mode === 'proxy') {
+    proxyUrl = document.getElementById('settings-proxy-url').value.trim() || DEFAULT_PROXY_URL || '';
+    if (!proxyUrl || !/^https?:\/\//i.test(proxyUrl)) {
+      alert("No Secure Proxy URL is configured. Ask the admin to set one up in the Admin Panel.");
+      return;
+    }
+  } else if (mode !== 'mock') {
     model = document.getElementById('settings-model').value;
     if (!key) {
       alert("Please enter a valid API Key.");
       return;
     }
   }
-  
-  appSettings = { apiMode: mode, apiKey: key, model: model };
+
+  appSettings = { apiMode: mode, apiKey: key, model: model, proxyUrl: proxyUrl };
   updateApiStatusDot();
   localStorage.setItem('cs_settings', JSON.stringify(appSettings));
-  
+
   applySettingsUI();
   closeSettings();
+  showToast(mode === 'mock' ? 'Sandbox mode active (mock data).' : mode === 'proxy' ? 'AI provider saved: Secure Proxy' : `AI provider saved: ${mode === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'}`, 'success');
 }
 
 function applySettingsUI() {
@@ -3371,6 +3544,231 @@ function applySettingsUI() {
   }
   // Update API status indicator in sidebar
   setTimeout(updateApiStatusDot, 50);
+}
+
+/* ── HIDDEN ADMIN PANEL ENTRY ──
+   No visible button, so family members using the app don't see an
+   invitation to poke at admin controls. Two ways in, both known only to
+   you: click the sidebar logo 5 times quickly, or press Ctrl+Shift+A. */
+let _logoClickCount = 0;
+let _logoClickTimer = null;
+function _logoClickHandler() {
+  _logoClickCount++;
+  clearTimeout(_logoClickTimer);
+  _logoClickTimer = setTimeout(() => { _logoClickCount = 0; }, 1200);
+  if (_logoClickCount >= 5) {
+    _logoClickCount = 0;
+    openAdminPanel();
+  } else {
+    goHome();
+  }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+    e.preventDefault();
+    openAdminPanel();
+  }
+});
+
+/* ── ADMIN PANEL ── */
+let _adminPlaintext = ''; // held only in memory for this session, used to authenticate toggle calls
+
+function _adminHashConfigured() {
+  return !!(ADMIN_PASSPHRASE_HASH || localStorage.getItem('cs_admin_passphrase_hash'));
+}
+
+function openAdminPanel() {
+  document.getElementById('adminmodal').classList.add('open');
+  const gateView = document.getElementById('admin-locked-view');
+  const panelView = document.getElementById('admin-panel-view');
+  document.getElementById('admin-passphrase-input').value = '';
+  document.getElementById('admin-gate-error').textContent = '';
+
+  if (!_adminHashConfigured()) {
+    // First-ever use: no passphrase exists anywhere yet — go straight in and prompt setup
+    gateView.style.display = 'none';
+    panelView.style.display = 'block';
+    document.getElementById('admin-setup-help').innerHTML =
+      "⚠️ <strong>No admin passphrase is set yet.</strong> Anyone can open this panel until you set one below. Set it now, then note the hash it gives you.";
+    _prefillAdminPanel();
+  } else {
+    gateView.style.display = 'block';
+    panelView.style.display = 'none';
+    setTimeout(() => document.getElementById('admin-passphrase-input').focus(), 50);
+  }
+}
+
+function closeAdminPanel() {
+  document.getElementById('adminmodal').classList.remove('open');
+}
+
+async function unlockAdminPanel() {
+  const val = document.getElementById('admin-passphrase-input').value;
+  const hash = await sha256Hex(val);
+  const adminHash = ADMIN_PASSPHRASE_HASH || localStorage.getItem('cs_admin_passphrase_hash') || '';
+
+  if (adminHash && hash === adminHash) {
+    _adminPlaintext = val;
+    document.getElementById('admin-locked-view').style.display = 'none';
+    document.getElementById('admin-panel-view').style.display = 'block';
+    document.getElementById('admin-setup-help').textContent =
+      "This passphrase is only stored as a one-way hash. It unlocks this panel.";
+    _prefillAdminPanel();
+  } else {
+    document.getElementById('admin-gate-error').textContent = "Incorrect passphrase.";
+  }
+}
+
+function _prefillAdminPanel() {
+  const urlField = document.getElementById('admin-proxy-url');
+  urlField.value = appSettings.proxyUrl || DEFAULT_PROXY_URL || '';
+  const limitInput = document.getElementById('admin-daily-limit-input');
+  if (limitInput && !limitInput.value) limitInput.value = 300;
+  checkFamilyAccessStatus();
+}
+
+function _adminProxyUrl() {
+  const fromField = document.getElementById('admin-proxy-url').value.trim();
+  return fromField || appSettings.proxyUrl || DEFAULT_PROXY_URL || '';
+}
+
+function saveAdminProxyUrl() {
+  const url = document.getElementById('admin-proxy-url').value.trim();
+  if (!url || !/^https?:\/\//i.test(url)) {
+    showToast("Please enter a valid Worker URL (starting with https://).", 'error');
+    return;
+  }
+  appSettings.proxyUrl = url;
+  localStorage.setItem('cs_settings', JSON.stringify(appSettings));
+  showToast("Proxy URL saved. To use it on this device, go to Settings → API Mode → Secure Proxy.", 'success');
+  checkFamilyAccessStatus();
+}
+
+async function checkFamilyAccessStatus() {
+  const statusEl = document.getElementById('admin-toggle-status');
+  const btn = document.getElementById('admin-toggle-btn');
+  const url = _adminProxyUrl();
+  if (!url) {
+    statusEl.textContent = 'No Worker URL configured';
+    statusEl.style.color = 'var(--text-muted)';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+  statusEl.textContent = 'Checking status…';
+  statusEl.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch(url, { method: 'GET' });
+    const data = await r.json();
+    _renderFamilyAccessStatus(data.enabled, data.usageToday, data.dailyLimit);
+  } catch (err) {
+    statusEl.textContent = 'Could not reach Worker';
+    statusEl.style.color = 'var(--danger, #f87171)';
+  }
+}
+
+function _renderFamilyAccessStatus(enabled, usageToday, dailyLimit) {
+  const statusEl = document.getElementById('admin-toggle-status');
+  const btn = document.getElementById('admin-toggle-btn');
+  statusEl.textContent = enabled ? '🟢 Family AI Access: ON' : '🔴 Family AI Access: OFF';
+  statusEl.style.color = enabled ? 'var(--success, #34d399)' : 'var(--danger, #f87171)';
+  btn.textContent = enabled ? 'Turn OFF' : 'Turn ON';
+  btn.dataset.currentlyEnabled = enabled ? '1' : '0';
+
+  if (typeof usageToday === 'number' && typeof dailyLimit === 'number') {
+    const usageLine = document.getElementById('admin-usage-line');
+    const usageBar = document.getElementById('admin-usage-bar');
+    const limitInput = document.getElementById('admin-daily-limit-input');
+    const pct = Math.min(100, Math.round((usageToday / dailyLimit) * 100));
+    usageLine.textContent = `Usage today: ${usageToday} / ${dailyLimit} requests (resets at midnight UTC)`;
+    usageBar.style.width = pct + '%';
+    usageBar.style.background = pct >= 90 ? 'var(--danger, #f87171)' : pct >= 60 ? 'var(--warning, #fbbf24)' : 'var(--primary)';
+    if (document.activeElement !== limitInput) limitInput.value = dailyLimit;
+  }
+}
+
+async function saveDailyLimit() {
+  const url = _adminProxyUrl();
+  if (!url) { showToast("Set the Worker URL first.", 'error'); return; }
+  if (!_adminPlaintext) {
+    showToast("Please re-enter your admin passphrase (session expired) by closing and reopening the panel.", 'error');
+    return;
+  }
+  const val = parseInt(document.getElementById('admin-daily-limit-input').value, 10);
+  if (!Number.isFinite(val) || val < 1 || val > 5000) {
+    showToast("Enter a limit between 1 and 5000.", 'error');
+    return;
+  }
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setLimit', adminSecret: _adminPlaintext, limit: val })
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showToast(data.error || 'Could not update the limit.', 'error');
+    } else {
+      _renderFamilyAccessStatus(data.enabled, data.usageToday, data.dailyLimit);
+      showToast(`Daily limit set to ${data.dailyLimit} requests.`, 'success');
+    }
+  } catch (err) {
+    showToast("Could not reach the Worker: " + err.message, 'error');
+  }
+}
+
+async function toggleFamilyAccess() {
+  const url = _adminProxyUrl();
+  if (!url) { showToast("Set the Worker URL first.", 'error'); return; }
+  if (!_adminPlaintext) {
+    showToast("Please re-enter your admin passphrase (session expired) by closing and reopening the panel.", 'error');
+    return;
+  }
+  const btn = document.getElementById('admin-toggle-btn');
+  btn.disabled = true;
+  const wasEnabled = btn.dataset.currentlyEnabled === '1';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle', adminSecret: _adminPlaintext, setTo: !wasEnabled })
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showToast(data.error || 'Toggle failed — check that your passphrase matches ADMIN_SECRET in the Worker settings.', 'error');
+    } else {
+      _renderFamilyAccessStatus(data.enabled, data.usageToday, data.dailyLimit);
+      showToast(data.enabled ? 'Family AI access turned ON.' : "Family AI access turned OFF — family devices will fall back until you turn it back on.", 'success');
+    }
+  } catch (err) {
+    showToast("Could not reach the Worker: " + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function generateAdminHash() {
+  const val = document.getElementById('admin-new-passphrase').value;
+  if (!val || val.length < 6) {
+    showToast("Please choose a passphrase of at least 6 characters.", 'error');
+    return;
+  }
+  const hash = await sha256Hex(val);
+  localStorage.setItem('cs_admin_passphrase_hash', hash);
+  _adminPlaintext = val; // usable immediately for toggling in this session
+
+  const out = document.getElementById('admin-hash-output');
+  out.style.display = 'block';
+  out.innerHTML = `
+    ✅ Saved locally for this browser — you can use the panel here right away.<br><br>
+    <strong>To make this work on every device (e.g. a family member's laptop):</strong><br>
+    1. Copy this hash: <code style="user-select:all;">${hash}</code><br>
+    2. Paste it as the value of <code>ADMIN_PASSPHRASE_HASH</code> near the top of index.html<br>
+    3. In your Cloudflare Worker settings, set the secret <code>ADMIN_SECRET</code> to the exact passphrase you just typed (not the hash) — that's what authorizes the ON/OFF toggle server-side.<br>
+    4. Re-publish index.html to GitHub.
+  `;
+  document.getElementById('admin-new-passphrase').value = '';
+  showToast("Admin passphrase set for this browser.", 'success');
 }
 
 async function testApiKeyConnection() {
@@ -6543,6 +6941,9 @@ async function runAICallWithHistory(systemPrompt, messages, isJson = false) {
     await new Promise(resolve => setTimeout(resolve, 1200));
     return null;
   }
+  if (appSettings.apiMode === 'proxy') {
+    return callSecureProxy(systemPrompt, messages);
+  }
   if (!appSettings.apiKey) {
     throw new Error("No API key entered. Configure credentials in Settings.");
   }
@@ -6584,11 +6985,15 @@ async function runAICall(systemPrompt, userPrompt, isJson = false) {
     await new Promise(resolve => setTimeout(resolve, 1500));
     return null;
   }
-  
+
+  if (appSettings.apiMode === 'proxy') {
+    return callSecureProxy(systemPrompt, [{ role: 'user', content: userPrompt }]);
+  }
+
   if (!appSettings.apiKey) {
     throw new Error("No API key entered. Configure credentials in API settings.");
   }
-  
+
   if (appSettings.apiMode === 'gemini') {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${appSettings.model}:generateContent?key=${appSettings.apiKey}`;
     
@@ -6641,6 +7046,24 @@ async function runAICall(systemPrompt, userPrompt, isJson = false) {
     const data = await response.json();
     return data.content?.map(c => c.text || '').join('') || '';
   }
+}
+
+// Routes an AI call through the family's Cloudflare Worker instead of a
+// browser-held key — see worker.js for the server-side implementation.
+async function callSecureProxy(systemPrompt, messages) {
+  if (!appSettings.proxyUrl) {
+    throw new Error("No Secure Proxy URL configured. Ask the admin to set one up in the Admin Panel.");
+  }
+  const response = await fetch(appSettings.proxyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system: systemPrompt, messages: messages })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Secure Proxy connection error');
+  }
+  return data.text || '';
 }
 
 function populateStrategyUI(user) {
@@ -6740,6 +7163,10 @@ function updateApiStatusDot() {
     dot.style.background = '#fbbf24';
     txt.style.color = '#fbbf24';
     txt.textContent = 'Demo mode';
+  } else if (appSettings.apiMode === 'proxy' && appSettings.proxyUrl) {
+    dot.style.background = '#34d399';
+    txt.style.color = '#34d399';
+    txt.textContent = 'AI Ready · Proxy';
   } else if (appSettings.apiKey && appSettings.apiKey.length > 8) {
     dot.style.background = '#34d399';
     txt.style.color = '#34d399';
