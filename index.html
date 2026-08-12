@@ -1469,6 +1469,113 @@ textarea {
 .toast .toast-x:hover { opacity: 1; }
 @keyframes toastIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .toast.out { transition: opacity 0.3s, transform 0.3s; opacity: 0; transform: translateX(30px); }
+
+/* Floating AI reference guide widget — highest z-index of any fixed element
+   (above #toast-container's 99999) so it's always reachable from any screen. */
+#ref-guide-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary-gradient);
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--primary-glow);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+#ref-guide-fab:hover { transform: scale(1.08); }
+/* Hidden while the PIN lock/setup screens are up — a "locked" device shouldn't
+   have a chat widget usable on top of it. */
+body:has(#pinlockmodal.open) #ref-guide-fab,
+body:has(#pinsetupmodal.open) #ref-guide-fab {
+  display: none;
+}
+#ref-guide-panel {
+  position: fixed;
+  bottom: 92px;
+  right: 24px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  height: 460px;
+  max-height: calc(100vh - 120px);
+  background: rgba(18, 22, 41, 0.97);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.55);
+  z-index: 100000;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+}
+#ref-guide-panel.open { display: flex; }
+.rg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--primary-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13.5px;
+  flex-shrink: 0;
+}
+.rg-header button { background: none; border: none; color: #fff; cursor: pointer; font-size: 16px; opacity: 0.85; }
+.rg-header button:hover { opacity: 1; }
+.rg-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+.rg-msg { max-width: 88%; padding: 8px 12px; border-radius: 12px; line-height: 1.5; white-space: pre-wrap; }
+.rg-msg.user { align-self: flex-end; background: var(--primary-gradient); color: #fff; border-bottom-right-radius: 3px; }
+.rg-msg.assistant { align-self: flex-start; background: rgba(255,255,255,0.06); color: var(--text-primary, #e5e7eb); border-bottom-left-radius: 3px; }
+.rg-chips { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.rg-chip {
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.rg-chip:hover { border-color: var(--primary); color: var(--primary); }
+.rg-input-bar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--panel-border); flex-shrink: 0; }
+.rg-input-bar input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+  font-size: 13px;
+}
+.rg-input-bar button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary-gradient);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+}
 </style>
 <!-- DOMPurify: sanitise AI output before innerHTML injection -->
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
@@ -1731,6 +1838,20 @@ textarea {
         <button class="btn-action" type="button" onclick="savePin()">Save PIN</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- FLOATING AI REFERENCE GUIDE — persistent contextual help, reachable from any screen -->
+<button id="ref-guide-fab" onclick="toggleRefGuide()" title="Ask a question about this app" aria-label="Open help chat">💬</button>
+<div id="ref-guide-panel">
+  <div class="rg-header">
+    <span>💬 Quick Help</span>
+    <button type="button" onclick="toggleRefGuide()" aria-label="Close help chat">✕</button>
+  </div>
+  <div class="rg-body" id="rg-chat-body"></div>
+  <div class="rg-input-bar">
+    <input type="text" id="rg-input" placeholder="Ask where something is or how it works..." onkeydown="if(event.key==='Enter')sendRefGuideMessage()" />
+    <button type="button" onclick="sendRefGuideMessage()">Send</button>
   </div>
 </div>
 
@@ -3511,6 +3632,189 @@ async function savePin() {
 
 initPinLock();
 
+/* ── FLOATING AI REFERENCE GUIDE ──
+   Persistent contextual help widget. Uses runAICallWithHistory() with a
+   system prompt describing the app's actual structure so it can answer
+   "where do I find X" accurately. Falls back to canned navigation answers
+   in Mock mode (runAICallWithHistory returns null there — a real AI call
+   isn't available, but common questions shouldn't need one anyway). */
+const REF_GUIDE_SYSTEM_PROMPT = `You are a friendly, concise in-app help assistant for "Career Suite," a personal career-toolkit web app. Answer questions about how to use THIS app — where features live, what they do, and how to accomplish tasks. Keep replies SHORT (2-4 sentences max), plain and conversational — never essay-length. Never invent features that don't exist; if you don't know, say so briefly.
+
+App structure (left sidebar navigation, top to bottom):
+- Candidate Profile: upload/manage a CV. Click "+ Add Candidate" to add a profile. Accepts PDF, Word (.docx), or TXT — legacy binary .doc files are NOT supported (the app will say so and ask for .docx/PDF/TXT instead).
+- Student Starter CV: a guided builder for people with little/no work experience yet, reachable via a link on the Candidate Profile upload screen.
+- Career Strategy & SWOT: AI-generated Strengths/Weaknesses/Opportunities/Threats and career positioning, generated automatically from the uploaded CV once an AI connection is configured.
+- STAR Builder: builds Situation-Task-Action-Result stories for interview answers, saved to a personal STAR bank for reuse.
+- CV Tailor & Letters: paste a target Job Description to generate a Tailored Profile, Cover Letter, CV Achievements, and a Tailored STAR story. Each output has a Copy button and a Download button (Download saves a real Word .docx file, not plain text).
+- Personal Statement: builds a personal statement for job or university applications from three guided questions; also has Copy and Download (.docx) buttons.
+- Decision Matrix: weighted scoring tool for comparing options (job offers, universities, vendors, etc.) against custom criteria. Criteria weights must total exactly 100% before it will run the evaluation.
+- Interview & Sales Coach: AI roleplay practice (interview questions or a sales call), with voice input/output and a choice of two avatars/voices — Ms. Evelyn or Mr. Arthur.
+
+Other things you should know:
+- Local PIN lock: an optional 4-digit PIN that locks the app on this device — a privacy screen for shared/family computers, not a security system. Set or changed via the "🔒 Change PIN" (or "🔒 Set PIN") button in the sidebar footer, just below "API Key Settings." "Forgot PIN?" on the lock screen clears the PIN only — it never deletes saved profiles or CVs.
+- API Key Settings: the button in the sidebar footer to choose Sandbox/Mock mode (no key needed, sample data), a personal Gemini or Anthropic API key, or "Secure Proxy" mode (a pre-configured shared connection — just select it and save, no key needed).
+- There is also an Admin Panel for whoever manages this device's shared AI access. It exists, but you should NOT explain how to open it — if asked, say to check with whoever set up the app on this device.
+
+If a question is outside the app's scope, say so briefly rather than guessing.`;
+
+// One-line description per screen (activeTool value) — the single source of
+// truth for "what is the user looking at right now," reused by both the
+// live-AI system prompt context and the Mock-mode canned generic-help reply.
+const REF_GUIDE_SCREEN_INFO = {
+  home: 'the Home/Dashboard screen — an overview with quick links into the other tools and a summary of the active candidate profile.',
+  profile: 'the Candidate Profile screen — upload/manage a CV (PDF, Word .docx, or TXT) and manage saved candidate profiles.',
+  strategy: 'the Career Strategy & SWOT screen — AI-generated Strengths/Weaknesses/Opportunities/Threats and career positioning based on the uploaded CV.',
+  star: 'the STAR Builder screen — builds Situation-Task-Action-Result stories for interview answers, saved to a personal STAR bank.',
+  tailor: 'the CV Tailor & Letters screen — paste a target Job Description to generate a Tailored Profile, Cover Letter, CV Achievements, and Tailored STAR story, each with Copy and Download buttons.',
+  statement: 'the Personal Statement screen — builds a personal statement for job or university applications from three guided questions, with Copy and Download buttons.',
+  matrix: 'the Decision Matrix screen — a weighted scoring tool for comparing options against custom criteria; criteria weights must total exactly 100% before it will run.',
+  coach: 'the Interview & Sales Coach screen — AI roleplay practice with voice input/output and a choice of two avatars/voices (Ms. Evelyn or Mr. Arthur).',
+};
+function refGuideScreenDesc(tool) {
+  return REF_GUIDE_SCREEN_INFO[tool] || REF_GUIDE_SCREEN_INFO.home;
+}
+
+// Builds the system prompt fresh each call with whatever screen is current —
+// never cache this, since the user can navigate while the panel stays open.
+function buildRefGuideSystemPrompt(currentScreen) {
+  return REF_GUIDE_SYSTEM_PROMPT + `
+
+Current screen: the user is right now on ${refGuideScreenDesc(currentScreen)}
+If their question is generic — like "what do I do here?", "how does this work?", or "what is this for?" — answer specifically about THIS current screen instead of asking them to clarify, unless their wording clearly points at a different part of the app.`;
+}
+
+let refGuideHistory = [];
+
+// Starter chips shown on first open (or any time the conversation is still
+// empty) — screen-specific where a set exists, generic fallback otherwise.
+const REF_GUIDE_STARTERS_BY_TOOL = {
+  home: ['How do I get started?', "Where's my PIN setting?", 'What can this app help me with?'],
+  profile: ['How do I upload a CV?', 'What file formats are supported?', "Where's my PIN setting?"],
+  strategy: ['What is a SWOT analysis?', 'How is my SWOT generated?', 'Can I edit the SWOT myself?'],
+  star: ['What does STAR stand for?', 'How do I add a STAR story?', 'Where are my STAR stories saved?'],
+  tailor: ['How does CV Tailoring work?', 'How do I download a tailored document?', 'What is the Focus Area for?'],
+  statement: ['How do I write a Personal Statement?', 'Can I use a reference statement?', 'How do I download my statement?'],
+  matrix: ['Why do my weights need to total 100%?', 'How does the Decision Matrix work?', 'Can multiple people score the same decision?'],
+  coach: ['How do I start a practice interview?', 'Can I use voice instead of typing?', 'How do I switch avatars?'],
+};
+const REF_GUIDE_STARTERS_DEFAULT = [
+  'How do I upload a CV?',
+  "Where's my PIN setting?",
+  "What's the Decision Matrix for?"
+];
+function getRefGuideStarters(tool) {
+  return REF_GUIDE_STARTERS_BY_TOOL[tool] || REF_GUIDE_STARTERS_DEFAULT;
+}
+
+// Simple keyword fallback for Mock mode / AI-unavailable — covers the most
+// common "where is X" questions without needing a real AI call.
+// Order matters — .find() returns the first match, so more specific/
+// higher-priority patterns are listed before the loose catch-all at the end
+// (e.g. "download...word doc" should hit the download reply, not the
+// upload one, even though both mention "doc").
+const REF_GUIDE_CANNED = [
+  { match: /\bpin\b/i, reply: 'Set or change your device PIN via the "🔒 Change PIN" button in the sidebar footer, just below API Key Settings. "Forgot PIN?" on the lock screen clears the PIN only — your saved profiles and CVs stay put.' },
+  { match: /download|export|\.docx\b|word doc/i, reply: 'Look for the Download button next to Copy on any generated output (Personal Statement, CV Tailor sections) — it saves a real Word .docx file.' },
+  { match: /decision matrix|\bmatrix\b/i, reply: 'The Decision Matrix compares options (job offers, universities, etc.) by scoring them against weighted criteria you define — the weights need to add up to 100% before it will run.' },
+  { match: /interview|coach|practice|roleplay/i, reply: 'The Interview & Sales Coach panel lets you practice with an AI roleplay partner — pick Ms. Evelyn or Mr. Arthur as your avatar/voice, and you can type or speak your answers.' },
+  { match: /api key|secure proxy|\bsettings\b/i, reply: 'The API Key Settings button in the sidebar footer lets you pick Sandbox/Mock mode, your own API key, or Secure Proxy mode (no key needed).' },
+  { match: /\bstar\b/i, reply: 'The STAR Builder helps you write Situation-Task-Action-Result stories for interview answers, saved to your personal STAR bank for later reuse.' },
+  { match: /tailor|cover letter/i, reply: 'CV Tailor & Letters takes a target Job Description and generates a Tailored Profile, Cover Letter, CV Achievements, and Tailored STAR story — each with Copy and Download buttons.' },
+  { match: /upload|\bcv\b|resume|\.doc\b|add candidate/i, reply: 'Go to Candidate Profile and click "+ Add Candidate" — you can upload a PDF, Word (.docx), or TXT file. Legacy .doc files need to be re-saved as .docx first.' },
+];
+
+// Catches generic "what is this / how does this work" style questions that
+// don't name any specific feature — these fall back to a per-screen
+// description (activeTool-aware) instead of the generic non-answer.
+const REF_GUIDE_GENERIC_HELP_RE = /what (is|does) this|how does this work|how do i use this|what do i do here|what can i do here|^help( me)?\b/i;
+
+function getCannedRefGuideReply(text, currentScreen) {
+  const hit = REF_GUIDE_CANNED.find(c => c.match.test(text));
+  if (hit) return hit.reply;
+  if (REF_GUIDE_GENERIC_HELP_RE.test(text)) {
+    return `You're on ${refGuideScreenDesc(currentScreen)}`;
+  }
+  return "I'm running in Sandbox/Mock mode right now, so I can only answer common navigation questions. Try asking about uploading a CV, the PIN, the Decision Matrix, downloads, or the Interview Coach — or connect a real AI key in Settings for open-ended help.";
+}
+
+function toggleRefGuide() {
+  const panel = document.getElementById('ref-guide-panel');
+  const isOpen = panel.classList.toggle('open');
+  // Re-render starters (for whatever screen is current) any time the panel
+  // opens with no conversation yet — not just the very first time — so a
+  // user who opens it, closes it without asking anything, navigates
+  // elsewhere, then reopens it sees starters for the NEW screen.
+  if (isOpen && refGuideHistory.length === 0) {
+    renderRefGuideStarters();
+  }
+  if (isOpen) {
+    setTimeout(() => document.getElementById('rg-input').focus(), 50);
+  }
+}
+
+function renderRefGuideStarters() {
+  const body = document.getElementById('rg-chat-body');
+  body.innerHTML = ''; // clear any stale intro/chips rendered for a previous screen
+  const intro = document.createElement('div');
+  intro.className = 'rg-msg assistant';
+  intro.textContent = "Hi! I can help you find your way around Career Suite. Ask me anything, or try one of these:";
+  body.appendChild(intro);
+
+  const chips = document.createElement('div');
+  chips.className = 'rg-chips';
+  getRefGuideStarters(activeTool).forEach(q => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'rg-chip';
+    chip.textContent = q;
+    chip.onclick = () => sendRefGuideMessage(q);
+    chips.appendChild(chip);
+  });
+  body.appendChild(chips);
+}
+
+function appendRefGuideMessage(role, text) {
+  const body = document.getElementById('rg-chat-body');
+  const el = document.createElement('div');
+  el.className = 'rg-msg ' + (role === 'user' ? 'user' : 'assistant');
+  el.textContent = text;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+  return el;
+}
+
+async function sendRefGuideMessage(presetText) {
+  const input = document.getElementById('rg-input');
+  const text = (presetText !== undefined ? presetText : input.value).trim();
+  if (!text) return;
+  input.value = '';
+
+  // Read activeTool fresh right now — the user may have navigated to a
+  // different screen while the panel was sitting open.
+  const currentScreen = activeTool;
+
+  appendRefGuideMessage('user', text);
+  refGuideHistory.push({ role: 'user', content: text });
+
+  const loadingEl = appendRefGuideMessage('assistant', '…');
+
+  try {
+    let reply;
+    if (appSettings.apiMode === 'mock') {
+      await new Promise(r => setTimeout(r, 400));
+      reply = getCannedRefGuideReply(text, currentScreen);
+    } else {
+      reply = await runAICallWithHistory(buildRefGuideSystemPrompt(currentScreen), refGuideHistory);
+    }
+    loadingEl.textContent = reply;
+    refGuideHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    loadingEl.textContent = "Sorry, I couldn't reach the AI just now. Check API Key Settings, or try again in a moment.";
+  }
+  const body = document.getElementById('rg-chat-body');
+  body.scrollTop = body.scrollHeight;
+}
+
 // Credentials & Settings
 let appSettings = {
   apiMode: 'anthropic',
@@ -4500,6 +4804,16 @@ function switchCoachAvatarAppearance() {
   document.getElementById('avatar-glasses').setAttribute('opacity', spec.glasses ? '1' : '0');
 }
 
+// Plain persona name for the selected avatar (e.g. "Ms. Evelyn"), stripped of
+// the "(Female Voice)"/"(Male Voice)" suffix in AVATAR_SPECS[x].title — used
+// to make the AI actually introduce itself by the name the UI shows it as.
+function getCoachPersonaName() {
+  const sel = document.getElementById('coach-avatar-select');
+  const val = sel ? sel.value : 'evelyn';
+  const spec = AVATAR_SPECS[val];
+  return spec ? spec.title.replace(/\s*\(.*?\)\s*$/, '') : 'Ms. Evelyn';
+}
+
 function setAvatarExpression(state) {
   const browLeft = document.getElementById('avatar-brow-left');
   const browRight = document.getElementById('avatar-brow-right');
@@ -4877,17 +5191,20 @@ async function startCoachSession() {
       firstMsg = mode === 'interview' ? MOCK_DATA.coach.interview[0].question : MOCK_DATA.coach.sales[0].buyer;
       await new Promise(r => setTimeout(r, 1200));
     } else {
-      const system = mode === 'interview' 
-        ? `You are an expert executive interviewer. You are interviewing the candidate for the role: ${role}.
+      const personaName = getCoachPersonaName();
+      const system = mode === 'interview'
+        ? `You are ${personaName}, an expert executive interviewer. You are interviewing the candidate for the role: ${role}.
+           Introduce yourself by name in your very first message. If the candidate asks your name later, answer that you are ${personaName}.
            Ask one professional question at a time. Do not output anything else. Keep details realistic.`
         : `You are playing the role of a buyer persona: ${diff}.
            The candidate is salesperson trying to sell: ${prod}.
-           Start the discussion in-character. Speak naturally and raise objections appropriate to your persona.`;
-      
+           Start the discussion in-character. Speak naturally and raise objections appropriate to your persona.
+           Your coaching persona — used only when you step outside the roleplay to give the salesperson feedback — is named ${personaName}. Never use this name as the buyer character's own name.`;
+
       const prompt = mode === 'interview'
-        ? "Introduce yourself and ask the first behavioral interview question."
+        ? `Introduce yourself as ${personaName} and ask the first behavioral interview question.`
         : "Start the sales call conversation. Say hello and state your initial position/objections.";
-        
+
       firstMsg = await runAICall(system, prompt);
     }
     
@@ -5011,14 +5328,53 @@ Use the AIG Competency Engine to draft standardized STAR bullets for your projec
 // Pending text to speak — used for gesture-unlock fallback
 let pendingSpeechText = null;
 
+// Strips markdown noise AND symbols that TTS engines read literally aloud
+// (e.g. "slash", "ampersand"). Conservative: only touches "/" and "-" when
+// they're clearly separators (surrounded by word boundaries/whitespace), so
+// real hyphenated words like "well-being" or "long-term" are left alone.
+function cleanTextForSpeech(text) {
+  return text
+    .replace(/===.*?===/g, '')
+    .replace(/[*#_]/g, '')
+    .replace(/\band\/or\b/gi, 'and or')
+    .replace(/\b(\w+)\/(\w+)\b/g, '$1 or $2')
+    .replace(/^\s*-\s+/gm, '')
+    .replace(/(\S)\s-\s(\S)/g, '$1, $2')
+    .replace(/&/g, ' and ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Called after the avatar finishes speaking to (re)start listening. Keeps the
+// status label honest instead of unconditionally claiming "Listening..."
+// even when recognition.start() silently fails.
+function startCoachMicAfterSpeech() {
+  const label = document.getElementById('avatar-label-status');
+  if (label) label.textContent = 'Starting mic...';
+  if (!(coachSessionActive && !sttActive)) return;
+  if (!recognition) {
+    if (label) label.textContent = 'Mic unavailable — type your response instead.';
+    return;
+  }
+  setTimeout(() => {
+    try {
+      recognition.start();
+      // recognition.onstart (see initSTT) overwrites this label with the real
+      // listening state once the mic actually activates.
+    } catch (e) {
+      if (label) label.textContent = "Mic didn't start — click 🎙 to try again.";
+    }
+  }, 300);
+}
+
 function triggerAvatarSpeech(text) {
   if (!speechActive || !('speechSynthesis' in window)) {
     return;
   }
   pendingSpeechText = text;
-  
+
   window.speechSynthesis.cancel();
-  const clean = text.replace(/===.*?===/g, '').replace(/[*#_]/g, '').trim();
+  const clean = cleanTextForSpeech(text);
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.rate = 1.02;
   
@@ -5063,23 +5419,9 @@ function triggerAvatarSpeech(text) {
       mouth.setAttribute('fill', 'none');
     }
     setAvatarExpression('listening');
-    const label = document.getElementById('avatar-label-status');
-    if (label) label.textContent = "Listening for your response...";
-    
-    // Auto-start microphone if speech synthesis finishes and session is active
-    if (coachSessionActive && !sttActive) {
-      setTimeout(() => {
-        try {
-          if (recognition) {
-            recognition.start();
-          }
-        } catch(e) {
-          // Ignore
-        }
-      }, 300);
-    }
+    startCoachMicAfterSpeech();
   };
-  
+
   // Set voice — use cachedVoices (populated at page load) not getVoices() which returns [] async
   const selectVal = document.getElementById('coach-avatar-select').value;
   const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
@@ -5113,7 +5455,7 @@ function speakOutLoud(text) {
 function unlockAndSpeak() {
   if (!pendingSpeechText || !('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
-  const clean = pendingSpeechText.replace(/===.*?===/g, '').replace(/[*#_]/g, '').trim();
+  const clean = cleanTextForSpeech(pendingSpeechText);
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.rate = 1.02;
   const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
@@ -5131,22 +5473,8 @@ function unlockAndSpeak() {
     if (label) label.textContent = 'Speaking...';
   };
   utterance.onend = () => {
-    const label = document.getElementById('avatar-label-status');
-    if (label) label.textContent = 'Listening for your response...';
     setAvatarExpression('listening');
-    
-    // Auto-start microphone if speech synthesis finishes and session is active
-    if (coachSessionActive && !sttActive) {
-      setTimeout(() => {
-        try {
-          if (recognition) {
-            recognition.start();
-          }
-        } catch(e) {
-          // Ignore
-        }
-      }, 300);
-    }
+    startCoachMicAfterSpeech();
   };
   window.speechSynthesis.speak(utterance);
   const label = document.getElementById('avatar-label-status');
@@ -5154,11 +5482,31 @@ function unlockAndSpeak() {
 }
 
 // Override sendCoachResponse to manage expressions
+// Gives visible feedback when Send is clicked with nothing typed/spoken —
+// otherwise it silently no-ops, which looks broken (especially if STT
+// failed to capture anything, per the mic-state fix above).
+function flashCoachInputEmpty() {
+  const input = document.getElementById('coach-input');
+  if (!input) return;
+  const originalPlaceholder = input.placeholder;
+  input.style.borderColor = 'var(--danger, #f87171)';
+  input.placeholder = 'Type or speak an answer first...';
+  setTimeout(() => {
+    input.style.borderColor = '';
+    if (input.placeholder === 'Type or speak an answer first...') {
+      input.placeholder = originalPlaceholder;
+    }
+  }, 1200);
+}
+
 async function sendCoachResponse() {
   const input = document.getElementById('coach-input');
   const userText = input.value.trim();
-  if (!userText) return;
-  
+  if (!userText) {
+    flashCoachInputEmpty();
+    return;
+  }
+
   // Pre-warm SpeechSynthesis synchronously within the click/keydown gesture context
   if ('speechSynthesis' in window && speechActive) {
     const silent = new SpeechSynthesisUtterance(" ");
@@ -5229,9 +5577,12 @@ async function sendCoachResponse() {
           return;
         }
         const isLastQuestion = coachContext.round === MAX_ROUNDS;
-        
-        const system = `You are an expert executive interviewer conducting a structured ${coachContext.round} of ${MAX_ROUNDS} question interview for the role: ${coachContext.targetRole}.
-        For each candidate response, provide:
+        const personaName = getCoachPersonaName();
+
+        const system = `You are ${personaName}, an expert executive interviewer conducting a structured ${coachContext.round} of ${MAX_ROUNDS} question interview for the role: ${coachContext.targetRole}.
+        If the candidate asks your name, answer that you are ${personaName}.
+        If the candidate's response is a stall, non-answer, or indicates they need a moment (e.g. "I am waiting", "let me think", silence, very short filler like "um" or "ok"), do NOT treat it as a real answer or move on to the next question — instead offer brief, gentle encouragement and either repeat or rephrase the SAME question rather than advancing.
+        Otherwise, for each genuine candidate response, provide:
         1. Feedback: Score (1-10), what they did well, how to improve (especially using STAR framework).
         2. ${isLastQuestion ? 'This is the FINAL question of the session. Ask a strong closing question.' : 'The next logical interview question for this role.'}
         Format your response EXACTLY like this:
@@ -5240,14 +5591,16 @@ async function sendCoachResponse() {
         Strengths: [Point]
         Improvement: [Point]
         ===QUESTION===
-        [Your question here]`;
-        
+        [Your question here — or a rephrased/repeated version of the current question if the candidate stalled]`;
+
         // Pass full message history to Claude for proper multi-turn context
         const messages = coachContext.history.map(h => ({ role: h.role, content: h.content }));
         const res = await runAICallWithHistory(system, messages);
         const parts = res.split('===QUESTION===');
         const feedbackPart = parts[0].replace('===FEEDBACK===', '').trim();
-        const questionPart = parts[1] ? parts[1].trim() : "Thank you for answering. Let's move onto the next topic.";
+        // Genuine parse failure only (the AI didn't follow the format) — be honest about
+        // it rather than pretending an answer was given and scored.
+        const questionPart = parts[1] ? parts[1].trim() : "Let's continue — could you say a bit more, or would you like me to repeat the question?";
         
         nextMsg = questionPart;
         
@@ -5264,10 +5617,11 @@ async function sendCoachResponse() {
         
         feedback = { score, strengths, improvement };
       } else {
+        const personaName = getCoachPersonaName();
         const system = `You are playing the buyer persona: ${coachContext.difficulty}.
         The seller is trying to sell you: ${coachContext.product}.
-        Be in character. Reply as a buyer.
-        Also, step out of character to supply a Coaching Tip about what the seller did well or how they should adjust.
+        Be in character. Reply as a buyer — never use the name "${personaName}" for the buyer.
+        Also, step out of character to supply a Coaching Tip about what the seller did well or how they should adjust, as your coaching persona, ${personaName}.
         Format your response exactly like this:
         ===BUYER===
         [Your in-character buyer response]
@@ -7192,20 +7546,27 @@ function downloadAsWordDoc(title, bodyText, filename) {
   }
 
   const bodyHtml = DOMPurify.sanitize(marked.parse(bodyText));
+  const escapedTitle = String(title).replace(/</g, '&lt;');
+  // Hardcoded, not var(--primary) — this HTML is a standalone document with no
+  // :root, and is opened by Word (via html-docx-js), not the app's own page.
+  const brandColor = '#818cf8';
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; margin: 1in; color: #111; }
-  h1 { font-size: 18pt; margin-bottom: 12pt; }
-  h2, h3 { font-size: 13pt; margin-top: 16pt; margin-bottom: 6pt; }
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.6; margin: 1in; color: #1a1a1a; }
+  h1 { font-size: 20pt; color: ${brandColor}; margin: 0 0 4pt 0; padding-bottom: 10pt; border-bottom: 2.5pt solid ${brandColor}; }
+  .subtitle { font-size: 10pt; color: #6b7280; margin: 0 0 20pt 0; font-style: italic; }
+  h2, h3 { font-size: 13pt; color: ${brandColor}; margin-top: 22pt; margin-bottom: 8pt; }
   p { margin: 0 0 10pt 0; }
   ul, ol { margin: 0 0 10pt 24pt; }
 </style>
 </head>
 <body>
-<h1>${String(title).replace(/</g, '&lt;')}</h1>
+<h1>${escapedTitle}</h1>
+<div class="subtitle">Career Suite &mdash; ${escapedTitle} &middot; ${dateStr}</div>
 ${bodyHtml}
 </body>
 </html>`;
