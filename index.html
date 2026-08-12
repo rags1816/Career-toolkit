@@ -428,6 +428,11 @@ input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus
   box-shadow: 0 0 0 3px var(--panel-border-glow);
 }
 
+select option {
+  background: var(--bg-dark, #1a1a2e);
+  color: #fff;
+}
+
 textarea {
   resize: vertical;
 }
@@ -1518,7 +1523,7 @@ textarea {
   <div class="mbox" style="width:680px;">
     <div class="mtitle">Build a Student Starter CV</div>
     <div class="mdesc">No job history yet? No problem. Answer what applies to you from school life — subjects, activities, projects, achievements — and we'll turn it into a CV that unlocks Personal Statement and CV Tailor. Leave anything blank that doesn't apply.</div>
-    <div class="mdesc">The more sections you fill in, the more specific your SWOT, STAR answers, and Personal Statement will be. Even one or two lines per section helps — <span class="fh">Subjects &amp; Grades</span> and <span class="fh">Positions of Responsibility</span> are the best places to start if you're short on time.</div>
+    <div class="mdesc">The more sections you fill in, the more specific your SWOT, STAR answers, and Personal Statement will be. Even one or two lines per section helps — <span class="fh">Subjects &amp; Grades</span> and <span class="fh">Positions of Responsibility</span> are the best places to start if you’re short on time.</div>
 
     <div class="field">
       <label class="fl">Full Name</label>
@@ -1685,6 +1690,50 @@ textarea {
   </div>
 </div>
 
+<!-- PIN LOCK SCREEN — local, device-only privacy screen for shared family devices.
+     No background-click-to-dismiss: this one must actually block the UI until unlocked. -->
+<div class="mbg" id="pinlockmodal" style="z-index:2000;">
+  <div class="mbox" style="width:340px; text-align:center;">
+    <div class="mtitle">🔒 Device Locked</div>
+    <div class="mdesc">Enter the 4-digit PIN to unlock Career Suite on this device.</div>
+    <div class="field">
+      <input type="password" id="pinlock-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="text-align:center; font-size:28px; letter-spacing:14px;" onkeydown="if(event.key==='Enter')attemptPinUnlock()" />
+    </div>
+    <div id="pinlock-error" style="color:var(--danger,#f87171); font-size:12px; min-height:16px; margin-bottom:4px;"></div>
+    <div class="mfoot" style="justify-content:center;">
+      <button class="btn-action" type="button" onclick="attemptPinUnlock()">Unlock</button>
+    </div>
+    <div style="margin-top:14px;">
+      <a href="#" onclick="forgotPin(event)" style="font-size:12px; color:var(--text-muted); text-decoration:underline;">Forgot PIN?</a>
+    </div>
+  </div>
+</div>
+
+<!-- SET / CHANGE PIN MODAL — shared by the one-time first-load prompt (D2) and the
+     "🔒 Change PIN" entry point in the sidebar (D5). -->
+<div class="mbg" id="pinsetupmodal" onclick="closePinSetupModalOnBackdrop(event)">
+  <div class="mbox" style="width:380px;">
+    <div class="mtitle" id="pinsetup-title">🔒 Set a PIN for this device</div>
+    <div class="mdesc">This keeps your saved candidate profiles, CVs, and STAR bank private on this device. The PIN is stored only in this browser (as a hash) — there's no account, no server, and no cross-device sync.</div>
+    <div class="field">
+      <label class="fl">New 4-digit PIN</label>
+      <input type="password" id="pinsetup-new" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="text-align:center; font-size:22px; letter-spacing:10px;" />
+    </div>
+    <div class="field">
+      <label class="fl">Confirm PIN</label>
+      <input type="password" id="pinsetup-confirm" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="text-align:center; font-size:22px; letter-spacing:10px;" onkeydown="if(event.key==='Enter')savePin()" />
+    </div>
+    <div id="pinsetup-error" style="color:var(--danger,#f87171); font-size:12px; margin-bottom:8px;"></div>
+    <div class="mfoot" style="display:flex; justify-content:space-between; align-items:center;">
+      <a href="#" id="pinsetup-skip" onclick="skipPinSetup(event)" style="font-size:12px; color:var(--text-muted); text-decoration:underline;">Skip for now</a>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-secondary" type="button" id="pinsetup-cancel-btn" style="display:none;" onclick="closePinSetupModal()">Cancel</button>
+        <button class="btn-action" type="button" onclick="savePin()">Save PIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
   <div class="sb-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar(false)"></div>
   <!-- Sidebar -->
@@ -1756,6 +1805,9 @@ textarea {
       <button class="btn-sidebar-action" type="button" onclick="openSettings()">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         API Key Settings
+      </button>
+      <button class="btn-sidebar-action" type="button" onclick="openPinSetupModal('change')" title="Set or change the local device PIN">
+        🔒 <span id="pin-settings-label">Change PIN</span>
       </button>
     </div>
   </div>
@@ -2212,7 +2264,10 @@ textarea {
           <div id="sub-panel-tailor-profile" class="glass-card" style="margin-bottom:0">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
               <h4 style="font-weight:700; color:var(--primary)">Targeted Profile Summary <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
-              <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-rewritten-profile-textarea')">Copy</button>
+              <div style="display:flex; gap:6px;">
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-rewritten-profile-textarea')">Copy</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-rewritten-profile-textarea', 'Targeted Profile Summary', 'Tailored_Profile')">Download</button>
+              </div>
             </div>
             <textarea id="tailor-rewritten-profile-textarea" rows="5" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredField('rewrittenProfile', this.value)" placeholder="Tailored profile summary will appear here..."></textarea>
           </div>
@@ -2221,7 +2276,10 @@ textarea {
           <div id="sub-panel-tailor-letter" class="glass-card" style="margin-bottom:0; display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
               <h4 style="font-weight:700; color:var(--primary)">Targeted Cover Letter <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
-              <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-cover-letter-textarea')">Copy</button>
+              <div style="display:flex; gap:6px;">
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-cover-letter-textarea')">Copy</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-cover-letter-textarea', 'Targeted Cover Letter', 'Cover_Letter')">Download</button>
+              </div>
             </div>
             <textarea id="tailor-cover-letter-textarea" rows="12" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredField('tailoredCoverLetter', this.value)" placeholder="Tailored cover letter will appear here..."></textarea>
           </div>
@@ -2230,7 +2288,10 @@ textarea {
           <div id="sub-panel-tailor-achievements" class="glass-card" style="margin-bottom:0; display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
               <h4 style="font-weight:700">Tailored CV Achievement Bullets <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
-              <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-achievements-textarea')">Copy</button>
+              <div style="display:flex; gap:6px;">
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-achievements-textarea')">Copy</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-achievements-textarea', 'Tailored CV Achievement Bullets', 'CV_Achievements')">Download</button>
+              </div>
             </div>
             <textarea id="tailor-achievements-textarea" rows="6" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredAchievements(this.value)" placeholder="Tailored achievement bullets will appear here (one per line)..."></textarea>
           </div>
@@ -2262,7 +2323,10 @@ textarea {
           <div id="sub-panel-tailor-star" class="glass-card" style="margin-bottom:0; display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
               <h4 style="font-weight:700; color:var(--primary)">Targeted STAR Story <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
-              <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-star-output-textarea')">Copy</button>
+              <div style="display:flex; gap:6px;">
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-star-output-textarea')">Copy</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-star-output-textarea', 'Targeted STAR Story', 'Tailored_STAR')">Download</button>
+              </div>
             </div>
             <textarea id="tailor-star-output-textarea" rows="12" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredField('tailoredSTAR', this.value)" placeholder="Tailored STAR story will appear here..."></textarea>
           </div>
@@ -2643,7 +2707,7 @@ textarea {
           <div id="stt-live-strip" style="display:none;padding:8px 16px;background:rgba(248,113,113,0.08);border-top:1px solid rgba(248,113,113,0.25);font-size:12.5px;color:#fca5a5;display:none;align-items:center;gap:8px;">
             <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f87171;animation:pulse 1s infinite;flex-shrink:0;"></span>
             <span id="stt-interim-text" style="flex:1;font-style:italic;">Listening...</span>
-            <button onclick="toggleSTT()" style="border:none;background:rgba(248,113,113,0.2);color:#f87171;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-weight:600;">Stop &amp; Send</button>
+            <button onclick="toggleSTT()" style="border:none;background:rgba(248,113,113,0.2);color:#f87171;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-weight:600;" title="Manually finish and send your answer without waiting for the silence timer">✅ Done answering</button>
           </div>
 
           <div class="chat-input-bar">
@@ -2669,6 +2733,7 @@ textarea {
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
 <script>
 const PRELOADED_VIJAY_STARS = []
 // Personal STAR bank data removed — add your own via the CV upload and STAR builder;
@@ -3142,12 +3207,30 @@ let coachContext = {
 
 let recognition = null;
 let sttActive = false;
+let sttSilenceTimer = null;
+const STT_SILENCE_MS = 4000; // stop listening after 4s of no new speech, not on first pause
+
+function clearSttSilenceTimer() {
+  if (sttSilenceTimer) {
+    clearTimeout(sttSilenceTimer);
+    sttSilenceTimer = null;
+  }
+}
+
+function resetSttSilenceTimer() {
+  clearSttSilenceTimer();
+  sttSilenceTimer = setTimeout(() => {
+    if (recognition && sttActive) {
+      recognition.stop(); // silence elapsed — finalize the answer via onend
+    }
+  }, STT_SILENCE_MS);
+}
 
 function initSTT() {
   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
   const SpeechGen = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechGen();
-  recognition.continuous = false;      // stop listening automatically when user pauses speaking
+  recognition.continuous = true;       // keep listening through natural pauses; a custom silence timer (below) decides when to stop
   recognition.interimResults = true;   // show words as they're spoken
   recognition.lang = 'en-GB';          // match Vijay's locale
   recognition.maxAlternatives = 1;
@@ -3168,6 +3251,7 @@ function initSTT() {
     if (statusEl) statusEl.textContent = '🎙 Listening — speak now...';
     const input = document.getElementById('coach-input');
     if (input) { input.placeholder = '🎙 Listening — speak now...'; input.value = ''; }
+    resetSttSilenceTimer();
   };
 
   recognition.onresult = function(e) {
@@ -3191,14 +3275,17 @@ function initSTT() {
       const allFinal = input ? (input.dataset.finalText || '') : '';
       interimEl.textContent = allFinal + (interim ? '...' + interim : '') || 'Listening...';
     }
+    // New speech detected (interim or final) — push the silence deadline back out
+    resetSttSilenceTimer();
   };
 
   recognition.onspeechend = function() {
-    // Single phrase mode stops automatically
+    // No-op: continuous mode + the silence timer above decide when to actually stop.
   };
 
   recognition.onend = function() {
     sttActive = false;
+    clearSttSilenceTimer();
     const btn = document.getElementById('coach-record-btn');
     if (btn) {
       btn.classList.remove('recording');
@@ -3207,17 +3294,17 @@ function initSTT() {
     // Hide live strip
     const strip = document.getElementById('stt-live-strip');
     if (strip) strip.style.display = 'none';
-    
+
     const input = document.getElementById('coach-input');
     const textToSubmit = input ? input.value.trim() : '';
-    
+
     if (input) {
       input.placeholder = 'Type your response or click the mic 🎙 to speak...';
       delete input.dataset.finalText;
     }
     const statusEl = document.getElementById('avatar-label-status');
     if (statusEl && coachSessionActive) statusEl.textContent = 'Listening for your response...';
-    
+
     // Auto-submit if session is active and user spoke something
     if (coachSessionActive && textToSubmit) {
       sendCoachResponse();
@@ -3226,6 +3313,7 @@ function initSTT() {
 
   recognition.onerror = function(e) {
     sttActive = false;
+    clearSttSilenceTimer();
     const btn = document.getElementById('coach-record-btn');
     if (btn) btn.classList.remove('recording');
     const strip = document.getElementById('stt-live-strip');
@@ -3271,7 +3359,7 @@ async function sha256Hex(text) {
 }
 
 /* Toast helper for Secure Proxy / Admin Panel feedback (non-blocking, unlike alert()) */
-function showToast(msg, type = 'info', duration = 5000) {
+function showToast(msg, type = 'info', duration = 5000, action = null) {
   let container = document.getElementById('toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -3281,8 +3369,11 @@ function showToast(msg, type = 'info', duration = 5000) {
   const t = document.createElement('div');
   t.className = 'toast' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
   const icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
-  t.innerHTML = `<span style="flex-shrink:0">${icon}</span><span style="flex:1">${String(msg).replace(/</g,'&lt;')}</span><span class="toast-x">✕</span>`;
+  t.innerHTML = `<span style="flex-shrink:0">${icon}</span><span style="flex:1">${String(msg).replace(/</g,'&lt;')}</span>${action ? `<button type="button" class="toast-action" style="flex-shrink:0;background:none;border:1px solid currentColor;color:inherit;border-radius:6px;padding:3px 10px;font-size:11.5px;font-weight:600;cursor:pointer;">${String(action.label).replace(/</g,'&lt;')}</button>` : ''}<span class="toast-x">✕</span>`;
   t.querySelector('.toast-x').onclick = () => dismiss();
+  if (action) {
+    t.querySelector('.toast-action').onclick = () => { dismiss(); action.onClick(); };
+  }
   container.appendChild(t);
   let dismissed = false;
   function dismiss() {
@@ -3293,6 +3384,132 @@ function showToast(msg, type = 'info', duration = 5000) {
   }
   setTimeout(dismiss, duration);
 }
+
+/* Returns true if the app has a usable AI connection configured (mock mode counts, since it needs no key) */
+function isApiConfigured() {
+  if (appSettings.apiMode === 'mock') return true;
+  if (appSettings.apiMode === 'proxy' && appSettings.proxyUrl) return true;
+  if (appSettings.apiKey && appSettings.apiKey.length > 8) return true;
+  return false;
+}
+
+/* ── LOCAL PIN LOCK SCREEN ──
+   Purely local privacy screen for shared/family devices — everything it
+   guards (candidate profiles, CVs, STAR bank) already lives in this
+   browser's localStorage, so there is no server and no cross-device sync.
+   Independent of ADMIN_PASSPHRASE_HASH: that gates the Admin Panel
+   (proxy/family-access controls); this gates general app viewing. Reuses
+   sha256Hex() — no second hashing method. */
+const PIN_HASH_KEY = 'career_suite_pin_hash';
+const PIN_SKIPPED_KEY = 'career_suite_pin_setup_skipped';
+let _pinSetupMode = 'initial'; // 'initial' (first-run prompt) | 'change' (from sidebar)
+
+function initPinLock() {
+  updatePinButtonLabel();
+  if (localStorage.getItem(PIN_HASH_KEY)) {
+    showPinLockScreen();
+  } else if (!localStorage.getItem(PIN_SKIPPED_KEY)) {
+    openPinSetupModal('initial');
+  }
+}
+
+function updatePinButtonLabel() {
+  const lbl = document.getElementById('pin-settings-label');
+  if (lbl) lbl.textContent = localStorage.getItem(PIN_HASH_KEY) ? 'Change PIN' : 'Set PIN';
+}
+
+function showPinLockScreen() {
+  document.getElementById('pinlockmodal').classList.add('open');
+  const input = document.getElementById('pinlock-input');
+  input.value = '';
+  input.disabled = false;
+  document.getElementById('pinlock-error').textContent = '';
+  setTimeout(() => input.focus(), 50);
+}
+
+async function attemptPinUnlock() {
+  const input = document.getElementById('pinlock-input');
+  const errEl = document.getElementById('pinlock-error');
+  const val = input.value.trim();
+  if (!/^\d{4}$/.test(val)) {
+    errEl.textContent = 'Enter the 4-digit PIN.';
+    return;
+  }
+  const storedHash = localStorage.getItem(PIN_HASH_KEY);
+  const hash = await sha256Hex(val);
+  if (storedHash && hash === storedHash) {
+    document.getElementById('pinlockmodal').classList.remove('open');
+  } else {
+    errEl.textContent = 'Incorrect PIN.';
+    input.value = '';
+    // Debounce wrong attempts ~500ms so retrying doesn't feel broken — this is a
+    // privacy screen for family members, not a security boundary, so no attempt cap.
+    input.disabled = true;
+    setTimeout(() => { input.disabled = false; input.focus(); }, 500);
+  }
+}
+
+function forgotPin(e) {
+  e.preventDefault();
+  const ok = confirm("This will remove the PIN lock. Your saved profiles and CVs will NOT be deleted.\n\nRemove the PIN lock?");
+  if (!ok) return;
+  localStorage.removeItem(PIN_HASH_KEY);
+  document.getElementById('pinlockmodal').classList.remove('open');
+  updatePinButtonLabel();
+}
+
+function openPinSetupModal(mode) {
+  _pinSetupMode = mode;
+  document.getElementById('pinsetup-new').value = '';
+  document.getElementById('pinsetup-confirm').value = '';
+  document.getElementById('pinsetup-error').textContent = '';
+  document.getElementById('pinsetup-title').textContent = mode === 'change' ? '🔒 Change PIN' : '🔒 Set a PIN for this device';
+  document.getElementById('pinsetup-skip').style.display = mode === 'initial' ? 'inline' : 'none';
+  document.getElementById('pinsetup-cancel-btn').style.display = mode === 'change' ? 'inline-block' : 'none';
+  document.getElementById('pinsetupmodal').classList.add('open');
+  setTimeout(() => document.getElementById('pinsetup-new').focus(), 50);
+}
+
+function closePinSetupModal() {
+  document.getElementById('pinsetupmodal').classList.remove('open');
+}
+
+function closePinSetupModalOnBackdrop(e) {
+  if (e.target !== e.currentTarget) return;
+  if (_pinSetupMode === 'initial') {
+    skipPinSetup(e);
+  } else {
+    closePinSetupModal();
+  }
+}
+
+function skipPinSetup(e) {
+  if (e) e.preventDefault();
+  localStorage.setItem(PIN_SKIPPED_KEY, '1');
+  closePinSetupModal();
+}
+
+async function savePin() {
+  const newVal = document.getElementById('pinsetup-new').value.trim();
+  const confirmVal = document.getElementById('pinsetup-confirm').value.trim();
+  const errEl = document.getElementById('pinsetup-error');
+  if (!/^\d{4}$/.test(newVal)) {
+    errEl.textContent = 'PIN must be exactly 4 digits.';
+    return;
+  }
+  if (newVal !== confirmVal) {
+    errEl.textContent = 'PINs do not match.';
+    return;
+  }
+  const hash = await sha256Hex(newVal);
+  localStorage.setItem(PIN_HASH_KEY, hash);
+  localStorage.removeItem(PIN_SKIPPED_KEY);
+  closePinSetupModal();
+  updatePinButtonLabel();
+  showToast(_pinSetupMode === 'change' ? 'PIN updated for this device.' : 'PIN set for this device.', 'success');
+}
+
+initPinLock();
 
 // Credentials & Settings
 let appSettings = {
@@ -4369,6 +4586,23 @@ function triggerNaturalBlink() {
 // Run natural blinking loop periodically
 setInterval(triggerNaturalBlink, 3800);
 
+/* Fires the SWOT strategy + baseline document analysis for a freshly created/updated profile,
+   but only if an AI connection is actually configured — otherwise it just produces a confusing
+   raw AI error for family members who haven't set up a key/proxy yet. */
+function autoFireAnalysisIfConfigured(userId) {
+  if (isApiConfigured()) {
+    analyzeCareerStrategy(userId);
+    generateBaselineDocuments(userId);
+    return;
+  }
+  showToast(
+    "Set up your AI connection to unlock automatic analysis. You can still run it manually once configured.",
+    'info',
+    10000,
+    { label: '⚙️ API Key Settings', onClick: () => openSettings() }
+  );
+}
+
 /* ── OVERRIDDEN STATE FLOW ADAPTIONS ── */
 // Overwriting the baseline create to call baseline doc generators
 function addUser() {
@@ -4394,13 +4628,12 @@ function addUser() {
       renderSidebar();
       closeModal();
       selectUser(existingUser.id);
-      
-      analyzeCareerStrategy(existingUser.id);
-      generateBaselineDocuments(existingUser.id);
+
+      autoFireAnalysisIfConfigured(existingUser.id);
       return;
     }
   }
-  
+
   const newUser = {
     id: 'u_' + Date.now().toString(36),
     name: name,
@@ -4423,10 +4656,9 @@ function addUser() {
   renderSidebar();
   closeModal();
   selectUser(newUser.id);
-  
-  // Trigger both background analyses
-  analyzeCareerStrategy(newUser.id);
-  generateBaselineDocuments(newUser.id);
+
+  // Trigger both background analyses (if AI is actually configured)
+  autoFireAnalysisIfConfigured(newUser.id);
 }
 
 function confirmDirectProfile(prefix) {
@@ -4453,13 +4685,12 @@ function confirmDirectProfile(prefix) {
       document.querySelectorAll('[id$="-confirm"]').forEach(el => el.style.display = 'none');
       tempDirectCVText = '';
       selectUser(existingUser.id);
-      
-      analyzeCareerStrategy(existingUser.id);
-      generateBaselineDocuments(existingUser.id);
+
+      autoFireAnalysisIfConfigured(existingUser.id);
       return;
     }
   }
-  
+
   const newUser = {
     id: 'u_' + Date.now().toString(36),
     name: name,
@@ -4484,8 +4715,7 @@ function confirmDirectProfile(prefix) {
   tempDirectCVText = '';
   
   selectUser(newUser.id);
-  analyzeCareerStrategy(newUser.id);
-  generateBaselineDocuments(newUser.id);
+  autoFireAnalysisIfConfigured(newUser.id);
 }
 
 function selectUser(id) {
@@ -5698,7 +5928,13 @@ async function generateMatrix() {
     alert("Please define the decision, options, and criteria.");
     return;
   }
-  
+
+  const draftWeightTotal = matrixDraft.criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
+  if (draftWeightTotal !== 100) {
+    alert(`Criteria weights total ${draftWeightTotal}%, but must equal 100% before running AI evaluation. Adjust the weights above (or use "Distribute Evenly").`);
+    return;
+  }
+
   const options = matrixDraft.options;
   const criteria = matrixDraft.criteria.map(c => c.name);
   
@@ -5889,7 +6125,13 @@ function calculateAndRenderMatrix() {
       valLabel.style.color = 'var(--danger)';
     }
   }
-  
+
+  if (totalWeight !== 100) {
+    document.getElementById('matrix-table').innerHTML = `<tr><td>⚠️ Weights total ${totalWeight}%, not 100%. Fix the criteria weights above before scoring is calculated.</td></tr>`;
+    document.getElementById('matrix-recommendation-box').innerHTML = '';
+    return;
+  }
+
   const tab = currentMatrixData.activeTab;
   if (tab === 'consolidated') {
     const consolidatedScores = currentMatrixData.options.map(opt => {
@@ -6533,6 +6775,12 @@ async function extractPDF(file) {
 
 async function extractDOCX(file) {
   const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf.slice(0, 4));
+  // Legacy binary .doc files (OLE/CFB format) start with D0 CF 11 E0.
+  // Modern .docx files are zip archives and start with PK (50 4B).
+  if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0) {
+    throw new Error("This looks like an older Word format (.doc). Please open it in Word and 'Save As' .docx, or upload as PDF/TXT instead.");
+  }
   const r = await mammoth.extractRawText({arrayBuffer:buf});
   return r.value;
 }
@@ -6929,27 +7177,77 @@ async function generatePersonalStatement() {
   }
 }
 
+/* Shared Word-doc exporter: wraps markdown/plain text into simple styled HTML
+   and converts it to a real .docx via html-docx-js. bodyText may contain
+   markdown (### headings, **bold**, lists) — it's rendered with the same
+   marked+DOMPurify pipeline used to display these outputs on-screen. */
+function downloadAsWordDoc(title, bodyText, filename) {
+  if (!bodyText) {
+    alert("No content to download.");
+    return;
+  }
+  if (typeof htmlDocx === 'undefined') {
+    alert("Word export library failed to load (check your internet connection) and try again.");
+    return;
+  }
+
+  const bodyHtml = DOMPurify.sanitize(marked.parse(bodyText));
+  const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; margin: 1in; color: #111; }
+  h1 { font-size: 18pt; margin-bottom: 12pt; }
+  h2, h3 { font-size: 13pt; margin-top: 16pt; margin-bottom: 6pt; }
+  p { margin: 0 0 10pt 0; }
+  ul, ol { margin: 0 0 10pt 24pt; }
+</style>
+</head>
+<body>
+<h1>${String(title).replace(/</g, '&lt;')}</h1>
+${bodyHtml}
+</body>
+</html>`;
+
+  const converted = htmlDocx.asBlob(fullHtml);
+  const url = URL.createObjectURL(converted);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.toLowerCase().endsWith('.docx') ? filename : filename + '.docx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* Download helper for CV Tailor & Letters outputs (Tailored Profile, Cover Letter,
+   CV Achievements, Tailored STAR) — reads the live textarea value so any manual edits
+   the user made are included, matching what Copy sends to the clipboard. */
+function downloadTailorOutput(elementId, title, fileSuffix) {
+  const el = document.getElementById(elementId);
+  const text = el ? el.value : '';
+  if (!text) {
+    alert("No generated content to download yet.");
+    return;
+  }
+  const user = users.find(u => u.id === activeUserId);
+  const prefix = user ? user.name.replace(/\s+/g, '_') : 'Candidate';
+  downloadAsWordDoc(title, text, `${prefix}_${fileSuffix}`);
+}
+
 function downloadStatementDraft() {
   const text = document.getElementById('statement-output-textarea').value;
   if (!text) {
     alert("No generated statement content to download.");
     return;
   }
-  
-  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  
+
   const user = users.find(u => u.id === activeUserId);
   const prefix = user ? user.name.replace(/\s+/g, '_') : 'Candidate';
   const type = document.getElementById('statement-type').value;
-  
-  a.download = `${prefix}_Personal_Statement_${type}.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+
+  downloadAsWordDoc('Personal Statement', text, `${prefix}_Personal_Statement_${type}`);
 }
 
 // Multi-turn conversation call — passes full messages array (for interview/sales coach)
@@ -7371,8 +7669,10 @@ function endCoachSession() {
 function copyText(elementId) {
   const el = document.getElementById(elementId);
   if (!el) return;
-  
-  navigator.clipboard.writeText(el.innerText).then(() => {
+
+  const text = (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') ? el.value : el.innerText;
+
+  navigator.clipboard.writeText(text).then(() => {
     alert("Text copied successfully to clipboard.");
   }).catch(() => {
     alert("Failed copying text.");
