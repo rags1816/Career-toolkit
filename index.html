@@ -408,6 +408,35 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
   font-size: 11.5px;
 }
 
+.scv-flabel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.scv-flabel-row .fl { margin-bottom: 0; }
+.scv-flabel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.scv-assist-btn {
+  padding: 3px 9px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.scv-undo-link, .uni-undo-link {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 input[type=text], input[type=password], textarea, select {
   width: 100%;
   padding: 10px 14px;
@@ -1588,39 +1617,54 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
 <div class="mbg" id="modal" onclick="if(event.target===this)closeModal()">
   <div class="mbox">
     <div class="mtitle">Add Candidate Profile</div>
-    <div class="mdesc">Upload a CV — the name will be parsed from the text automatically.</div>
-    <div class="field">
-      <label class="fl">CV File <span class="tooltip-container">ⓘ<span class="tooltip-text">Upload your CV in .docx, .pdf, or .txt format to extract candidate details.</span></span></label>
-      <div class="dropzone" id="m-dropzone"
-        ondragover="event.preventDefault();this.classList.add('drag')"
-        ondragleave="this.classList.remove('drag')"
-        ondrop="handleDrop(event)">
-        <input type="file" id="m-file" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)" />
-        <div class="dz-icon">📁</div>
-        <div class="dz-title">Click to upload or drag &amp; drop</div>
-        <div class="dz-sub">Supports PDF, Word (.docx / .doc), and TXT</div>
+    <div class="mdesc">How would you like to get started?</div>
+
+    <div id="modal-entry-choice" style="display:flex; gap:12px; margin-bottom:8px;">
+      <button type="button" class="btn-action" style="flex:1; padding:16px 10px; font-size:13.5px; display:flex; flex-direction:column; align-items:center; gap:6px;" onclick="showModalUploadSection()">
+        <span style="font-size:22px;">📄</span> Upload my CV
+      </button>
+      <button type="button" class="btn-action" style="flex:1; padding:16px 10px; font-size:13.5px; display:flex; flex-direction:column; align-items:center; gap:6px;" onclick="closeModal();openStudentCVModal()">
+        <span style="font-size:22px;">🎓</span> I'm a student — build mine
+      </button>
+    </div>
+
+    <div id="modal-upload-section" style="display:none;">
+      <div style="text-align:left;margin-bottom:12px;">
+        <a href="javascript:void(0)" onclick="showModalEntryChoice()" style="font-size:12px;color:var(--text-secondary);text-decoration:underline;">← Back</a>
       </div>
-      <div class="processing" id="m-proc"><span class="spin"></span> Extracting content from CV...</div>
-      <div class="fprev" id="m-prev">
-        <span style="font-size:18px">📄</span>
-        <div style="flex:1; min-width: 0;">
-          <div class="fp-name" id="m-fname" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
-          <div class="fp-size" id="m-fsize"></div>
+      <div class="field">
+        <label class="fl">CV File <span class="tooltip-container">ⓘ<span class="tooltip-text">Upload your CV in .docx, .pdf, or .txt format to extract candidate details.</span></span></label>
+        <div class="dropzone" id="m-dropzone"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleDrop(event)">
+          <input type="file" id="m-file" accept=".pdf,.doc,.docx,.txt" onchange="handleFileSelect(event)" />
+          <div class="dz-icon">📁</div>
+          <div class="dz-title">Click to upload or drag &amp; drop</div>
+          <div class="dz-sub">Supports PDF, Word (.docx / .doc), and TXT</div>
         </div>
-        <button type="button" onclick="clearFile()" style="border:none;background:none;cursor:pointer;font-size:16px;color:#fff">✕</button>
+        <div class="processing" id="m-proc"><span class="spin"></span> Extracting content from CV...</div>
+        <div class="fprev" id="m-prev">
+          <span style="font-size:18px">📄</span>
+          <div style="flex:1; min-width: 0;">
+            <div class="fp-name" id="m-fname" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+            <div class="fp-size" id="m-fsize"></div>
+          </div>
+          <button type="button" onclick="clearFile()" style="border:none;background:none;cursor:pointer;font-size:16px;color:#fff">✕</button>
+        </div>
+        <div class="cv-snippet" id="m-snippet"></div>
       </div>
-      <div class="cv-snippet" id="m-snippet"></div>
-      <div style="text-align:center;margin-top:10px;">
-        <a href="javascript:void(0)" onclick="closeModal();openStudentCVModal()" style="font-size:12px;color:var(--text-secondary);text-decoration:underline;">No work experience yet? Build a Student Starter CV instead →</a>
+      <div class="field">
+        <label class="fl">Candidate Name <span class="fh">auto-detected — edit if needed</span></label>
+        <input type="text" id="m-name" placeholder="Name parsed from CV" />
+      </div>
+      <div class="mfoot">
+        <button class="btn-secondary" type="button" onclick="closeModal()">Cancel</button>
+        <button class="btn-action" type="button" onclick="addUser()">Create Profile</button>
       </div>
     </div>
-    <div class="field">
-      <label class="fl">Candidate Name <span class="fh">auto-detected — edit if needed</span></label>
-      <input type="text" id="m-name" placeholder="Name parsed from CV" />
-    </div>
-    <div class="mfoot">
+    <div id="modal-entry-choice-cancel" class="mfoot">
       <button class="btn-secondary" type="button" onclick="closeModal()">Cancel</button>
-      <button class="btn-action" type="button" onclick="addUser()">Create Profile</button>
     </div>
   </div>
 </div>
@@ -1637,49 +1681,62 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
       <input type="text" id="scv-name" placeholder="e.g. Aanya Sharma" />
     </div>
     <div class="field">
-      <label class="fl">Year Group / School / Intended University Start Year <span class="fh">(Optional)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Year Group / School / Intended University Start Year <span class="fh">(Optional)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-basics-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-basics')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-basics')">✨ Help me write this</button></div></div>
       <input type="text" id="scv-basics" placeholder="e.g. Year 12, Northgate College, applying September 2027" />
     </div>
     <div class="field">
-      <label class="fl">Subjects &amp; Grades <span class="fh">(A-level/IB/BTEC + GCSEs)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Subjects &amp; Grades <span class="fh">(A-level/IB/BTEC + GCSEs)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-subjects-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-subjects')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-subjects')">✨ Help me write this</button></div></div>
       <textarea id="scv-subjects" rows="2" placeholder="e.g. A-levels: Biology (A*), Chemistry (A), Maths (A). GCSEs: 8 grades 7-9 including Biology, Chemistry, Maths."></textarea>
     </div>
     <div class="field">
-      <label class="fl">Positions of Responsibility <span class="fh">(Optional)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Positions of Responsibility <span class="fh">(Optional)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-responsibility-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-responsibility')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-responsibility')">✨ Help me write this</button></div></div>
       <textarea id="scv-responsibility" rows="2" placeholder="e.g. Head Girl candidate, Form Rep, Debate Club Chair, Football Team Captain"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Extracurricular Activities &amp; Clubs <span class="fh">(Optional)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Extracurricular Activities &amp; Clubs <span class="fh">(Optional)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-extracurricular-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-extracurricular')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-extracurricular')">✨ Help me write this</button></div></div>
       <textarea id="scv-extracurricular" rows="2" placeholder="e.g. Duke of Edinburgh Silver Award (2 years), school orchestra (violin, Grade 6), coding club"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Volunteering &amp; Community Involvement <span class="fh">(Optional)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Volunteering &amp; Community Involvement <span class="fh">(Optional)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-volunteering-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-volunteering')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-volunteering')">✨ Help me write this</button></div></div>
       <textarea id="scv-volunteering" rows="2" placeholder="e.g. Weekly volunteer at local food bank, fundraised £400 for [charity]"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Work-Adjacent Experience <span class="fh">(Optional — babysitting, tutoring, family business, Saturday job, work shadowing)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Work-Adjacent Experience <span class="fh">(Optional — babysitting, tutoring, family business, Saturday job, work shadowing)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-work-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-work')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-work')">✨ Help me write this</button></div></div>
       <textarea id="scv-work" rows="2" placeholder="e.g. Tutored younger students in Maths weekly, helped at family shop on weekends, one-week work shadowing at [company]"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Independent Projects &amp; Super-Curricular Learning <span class="fh">(Optional — EPQ, MOOCs, competitions, wider reading)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Independent Projects &amp; Super-Curricular Learning <span class="fh">(Optional — EPQ, MOOCs, competitions, wider reading)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-projects-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-projects')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-projects')">✨ Help me write this</button></div></div>
       <textarea id="scv-projects" rows="2" placeholder="e.g. EPQ on renewable energy policy, completed Coursera course in Python, UK Biology Olympiad Bronze"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Achievements &amp; Awards <span class="fh">(Optional)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Achievements &amp; Awards <span class="fh">(Optional)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-achievements-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-achievements')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-achievements')">✨ Help me write this</button></div></div>
       <textarea id="scv-achievements" rows="2" placeholder="e.g. School Science Prize 2025, County Athletics silver medal"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Skills <span class="fh">(Optional — name the skill and what shows it)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Skills <span class="fh">(Optional — name the skill and what shows it)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-skills-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-skills')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-skills')">✨ Help me write this</button></div></div>
       <textarea id="scv-skills" rows="2" placeholder="e.g. Public speaking (debate club, county finals), teamwork (football captain), coding (Python personal projects)"></textarea>
     </div>
     <div class="field">
-      <label class="fl">Interests Relevant to Intended Course/Field <span class="fh">(Optional)</span></label>
+      <div class="scv-flabel-row"><label class="fl">Interests Relevant to Intended Course/Field <span class="fh">(Optional)</span></label><div class="scv-flabel-actions"><a href="javascript:void(0)" id="scv-interests-undo" class="scv-undo-link" onclick="undoAiAssistField('scv-interests')" style="display:none;">↩ Undo</a><button type="button" class="btn-secondary scv-assist-btn" onclick="openAiAssist('scv-interests')">✨ Help me write this</button></div></div>
       <textarea id="scv-interests" rows="2" placeholder="e.g. Reads around behavioural economics, follows [podcast], attended a university taster day in Psychology"></textarea>
     </div>
 
     <div class="mfoot">
       <button class="btn-secondary" type="button" onclick="closeStudentCVModal()">Cancel</button>
       <button class="btn-action" type="button" onclick="buildStudentStarterCV()">Build Starter CV &amp; Create Profile</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI ASSIST MODAL (Student Starter CV field helper) -->
+<div class="mbg" id="ai-assist-modal" onclick="if(event.target===this)closeAiAssist()">
+  <div class="mbox" style="width:520px;">
+    <div class="mtitle">✨ Help me write this — <span id="ai-assist-field-title"></span></div>
+    <div class="mdesc">Answer what you can below — the AI will turn it into a few sentences for this field. You can still edit the result afterwards.</div>
+    <div id="ai-assist-questions"></div>
+    <div class="mfoot">
+      <button class="btn-secondary" type="button" onclick="closeAiAssist()">Cancel</button>
+      <button class="btn-action" type="button" id="ai-assist-generate-btn" onclick="generateAiAssistDraft()">Generate</button>
     </div>
   </div>
 </div>
@@ -2024,28 +2081,39 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
 
       <div id="profile-upload-zone" class="profile-required-state" style="margin-top:0">
         <div class="profile-required-icon">👤</div>
-        <h3>Upload CV to Create Profile</h3>
-        <p style="margin-bottom: 20px; max-width: 450px; color: var(--text-secondary);">Drag &amp; drop your CV here, or click to upload. The AI will parse details and set up your baseline dashboard.</p>
-        <div class="dropzone" style="max-width: 450px; margin: 0 auto 16px;"
-             ondragover="event.preventDefault();this.classList.add('drag')"
-             ondragleave="this.classList.remove('drag')"
-             ondrop="handleDirectDrop(event, 'profile')">
-          <input type="file" accept=".pdf,.doc,.docx,.txt" onchange="handleDirectFileSelect(event, 'profile')" />
-          <div class="dz-icon">📄</div>
-          <div class="dz-title">Click to upload or drag &amp; drop CV</div>
-          <div class="dz-sub">PDF, Word, or plain text</div>
+        <h3>Create Your Candidate Profile</h3>
+        <p style="margin-bottom: 20px; max-width: 450px; color: var(--text-secondary);">Already have a CV? Upload it. No work experience yet? We'll help you build one from your school life instead.</p>
+
+        <div id="profile-entry-choice" style="display:flex; gap:12px; max-width: 450px; margin: 0 auto 8px;">
+          <button type="button" class="btn-action" style="flex:1; padding:18px 10px; font-size:13.5px; display:flex; flex-direction:column; align-items:center; gap:6px;" onclick="showProfileUploadZone()">
+            <span style="font-size:22px;">📄</span> Upload my CV
+          </button>
+          <button type="button" class="btn-action" style="flex:1; padding:18px 10px; font-size:13.5px; display:flex; flex-direction:column; align-items:center; gap:6px;" onclick="openStudentCVModal()">
+            <span style="font-size:22px;">🎓</span> I'm a student — build mine
+          </button>
         </div>
 
-        <div style="max-width:450px;margin:0 auto 8px;text-align:center;">
-          <a href="javascript:void(0)" onclick="openStudentCVModal()" style="font-size:12.5px;color:var(--text-secondary);text-decoration:underline;">No work experience yet? Build a Student Starter CV instead →</a>
-        </div>
-        
-        <div id="direct-profile-confirm" style="display:none; max-width: 450px; margin: 16px auto; text-align: left;" class="glass-card">
-          <div class="field">
-            <label class="fl">Guessed Candidate Name <span class="fh">(Edit if needed)</span></label>
-            <input type="text" id="direct-profile-name" placeholder="Name parsed from CV" />
+        <div id="profile-upload-dropzone-section" style="display:none; max-width: 450px; margin: 0 auto;">
+          <div style="text-align:left;margin-bottom:10px;">
+            <a href="javascript:void(0)" onclick="showProfileEntryChoice()" style="font-size:12px;color:var(--text-secondary);text-decoration:underline;">← Back</a>
           </div>
-          <button class="btn-action" style="width: 100%" onclick="confirmDirectProfile('profile')">Create Profile</button>
+          <div class="dropzone" style="max-width: 450px; margin: 0 auto 16px;"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleDirectDrop(event, 'profile')">
+            <input type="file" accept=".pdf,.doc,.docx,.txt" onchange="handleDirectFileSelect(event, 'profile')" />
+            <div class="dz-icon">📄</div>
+            <div class="dz-title">Click to upload or drag &amp; drop CV</div>
+            <div class="dz-sub">PDF, Word, or plain text</div>
+          </div>
+
+          <div id="direct-profile-confirm" style="display:none; max-width: 450px; margin: 16px auto; text-align: left;" class="glass-card">
+            <div class="field">
+              <label class="fl">Guessed Candidate Name <span class="fh">(Edit if needed)</span></label>
+              <input type="text" id="direct-profile-name" placeholder="Name parsed from CV" />
+            </div>
+            <button class="btn-action" style="width: 100%" onclick="confirmDirectProfile('profile')">Create Profile</button>
+          </div>
         </div>
       </div>
 
@@ -2387,7 +2455,8 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
               <h4 style="font-weight:700; color:var(--primary)">Targeted Profile Summary <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
               <div style="display:flex; gap:6px;">
                 <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-rewritten-profile-textarea')">Copy</button>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-rewritten-profile-textarea', 'Targeted Profile Summary', 'Tailored_Profile')">Download</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-rewritten-profile-textarea', 'Targeted Profile Summary', 'Tailored_Profile')">⬇ Word</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutputPdf('tailor-rewritten-profile-textarea', 'Targeted Profile Summary', 'Tailored_Profile')">⬇ PDF</button>
               </div>
             </div>
             <textarea id="tailor-rewritten-profile-textarea" rows="5" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredField('rewrittenProfile', this.value)" placeholder="Tailored profile summary will appear here..."></textarea>
@@ -2399,7 +2468,8 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
               <h4 style="font-weight:700; color:var(--primary)">Targeted Cover Letter <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
               <div style="display:flex; gap:6px;">
                 <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-cover-letter-textarea')">Copy</button>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-cover-letter-textarea', 'Targeted Cover Letter', 'Cover_Letter')">Download</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-cover-letter-textarea', 'Targeted Cover Letter', 'Cover_Letter')">⬇ Word</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutputPdf('tailor-cover-letter-textarea', 'Targeted Cover Letter', 'Cover_Letter')">⬇ PDF</button>
               </div>
             </div>
             <textarea id="tailor-cover-letter-textarea" rows="12" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredField('tailoredCoverLetter', this.value)" placeholder="Tailored cover letter will appear here..."></textarea>
@@ -2411,7 +2481,8 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
               <h4 style="font-weight:700">Tailored CV Achievement Bullets <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
               <div style="display:flex; gap:6px;">
                 <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-achievements-textarea')">Copy</button>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-achievements-textarea', 'Tailored CV Achievement Bullets', 'CV_Achievements')">Download</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-achievements-textarea', 'Tailored CV Achievement Bullets', 'CV_Achievements')">⬇ Word</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutputPdf('tailor-achievements-textarea', 'Tailored CV Achievement Bullets', 'CV_Achievements')">⬇ PDF</button>
               </div>
             </div>
             <textarea id="tailor-achievements-textarea" rows="6" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredAchievements(this.value)" placeholder="Tailored achievement bullets will appear here (one per line)..."></textarea>
@@ -2446,7 +2517,8 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
               <h4 style="font-weight:700; color:var(--primary)">Targeted STAR Story <span class="ai-badge"><svg viewBox="0 0 24 24" style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.5"><path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 0 2h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1 0-2h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg> AI</span></h4>
               <div style="display:flex; gap:6px;">
                 <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('tailor-star-output-textarea')">Copy</button>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-star-output-textarea', 'Targeted STAR Story', 'Tailored_STAR')">Download</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutput('tailor-star-output-textarea', 'Targeted STAR Story', 'Tailored_STAR')">⬇ Word</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadTailorOutputPdf('tailor-star-output-textarea', 'Targeted STAR Story', 'Tailored_STAR')">⬇ PDF</button>
               </div>
             </div>
             <textarea id="tailor-star-output-textarea" rows="12" style="font-size:13.5px; line-height: 1.7; width: 100%;" oninput="saveTailoredField('tailoredSTAR', this.value)" placeholder="Tailored STAR story will appear here..."></textarea>
@@ -2472,53 +2544,145 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
       </div>
 
       <div id="statement-main-content" style="display:none;">
-        <div class="form-grid" style="grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start;">
-          <!-- Inputs Column -->
-          <div class="glass-card" style="margin-bottom:0;">
-            <div class="field">
-              <label class="fl">Application Category <span class="tooltip-container">ⓘ<span class="tooltip-text">Choose whether this statement is for a University course application or a Job opening. The prompt questions will update dynamically.</span></span></label>
-              <select id="statement-type" onchange="updateStatementQuestions()">
-                <option value="job">Job Application Practice / Submission</option>
-                <option value="university">University Admission / Academic Program</option>
-              </select>
-            </div>
+        <div class="field">
+          <label class="fl">Application Category <span class="tooltip-container">ⓘ<span class="tooltip-text">Choose whether this statement is for a University course application or a Job opening.</span></span></label>
+          <select id="statement-type" onchange="updateStatementQuestions()">
+            <option value="job">Job Application Practice / Submission</option>
+            <option value="university">University Admission / Academic Program</option>
+          </select>
+          <div id="statement-student-optional-note" class="fh" style="display:none; margin-top:6px;">(optional — most students only need University Admission)</div>
+        </div>
 
-            <!-- Questions container -->
-            <div id="statement-questions-container" style="margin-top:16px;">
+        <div class="field">
+          <label class="fl">Reference / Exemplar Personal Statement <span class="fh">(Optional)</span> <span class="tooltip-container">ⓘ<span class="tooltip-text">Paste a professionally written personal statement. The AI will analyze and emulate its tone, vocabulary, and paragraph structure.</span></span></label>
+          <textarea id="statement-reference-text" rows="4" placeholder="Paste a professionally written exemplar statement here to guide the AI's writing style and tone..." oninput="saveStatementField('referenceText', this.value)"></textarea>
+        </div>
+
+        <!-- JOB APPLICATION LAYOUT -->
+        <div id="statement-job-layout">
+          <div class="form-grid" style="grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start;">
+            <!-- Inputs Column -->
+            <div class="glass-card" style="margin-bottom:0;">
               <div class="field">
-                <label class="fl" id="lbl-statement-q1">Question 1</label>
-                <textarea id="statement-q1" rows="3" placeholder="Provide details..." oninput="saveStatementField('q1', this.value)"></textarea>
+                <label class="fl" id="lbl-statement-q1">1. Why are you interested in this specific role and company?</label>
+                <textarea id="statement-q1" rows="3" placeholder="e.g. Discuss your alignment with their values, what excites you about the company culture, or specific projects they are working on..." oninput="saveStatementField('q1', this.value)"></textarea>
               </div>
               <div class="field">
-                <label class="fl" id="lbl-statement-q2">Question 2</label>
-                <textarea id="statement-q2" rows="3" placeholder="Provide details..." oninput="saveStatementField('q2', this.value)"></textarea>
+                <label class="fl" id="lbl-statement-q2">2. What core professional achievements demonstrate your suitability?</label>
+                <textarea id="statement-q2" rows="3" placeholder="e.g. List 1-2 major projects, commercial savings, digital platform rollouts, or scale of responsibilities..." oninput="saveStatementField('q2', this.value)"></textarea>
               </div>
               <div class="field">
-                <label class="fl" id="lbl-statement-q3">Question 3</label>
-                <textarea id="statement-q3" rows="3" placeholder="Provide details..." oninput="saveStatementField('q3', this.value)"></textarea>
+                <label class="fl" id="lbl-statement-q3">3. How does this role align with your long-term career progression?</label>
+                <textarea id="statement-q3" rows="3" placeholder="e.g. Discuss your transition path (e.g. pivoting into product management) or developing wider strategic leadership..." oninput="saveStatementField('q3', this.value)"></textarea>
               </div>
+
+              <button class="btn-action" style="width:100%; margin-top:8px; padding:12px;" id="statement-generate-btn" onclick="generatePersonalStatement()">Generate Executive Summary</button>
             </div>
 
-            <div class="field" style="margin-top:16px;">
-              <label class="fl">Reference / Exemplar Personal Statement <span class="fh">(Optional)</span> <span class="tooltip-container">ⓘ<span class="tooltip-text">Paste a professionally written personal statement. The AI will analyze and emulate its tone, vocabulary, and paragraph structure.</span></span></label>
-              <textarea id="statement-reference-text" rows="5" placeholder="Paste a professionally written exemplar statement here to guide the AI's writing style and tone..." oninput="saveStatementField('referenceText', this.value)"></textarea>
-            </div>
-
-            <button class="btn-action" style="width:100%; margin-top:8px; padding:12px;" id="statement-generate-btn" onclick="generatePersonalStatement()">Generate First Draft</button>
-          </div>
-
-          <!-- Output Column -->
-          <div class="glass-card" style="margin-bottom:0; height:100%; display:flex; flex-direction:column; min-height: 480px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;">
-              <h4 style="font-weight:700; color:var(--primary); margin:0;">📝 AI Generated First Draft</h4>
-              <div style="display:flex; gap:8px;">
-                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('statement-output-textarea')">Copy</button>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadStatementDraft()">Download</button>
+            <!-- Output Column -->
+            <div class="glass-card" style="margin-bottom:0; height:100%; display:flex; flex-direction:column; min-height: 380px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;">
+                <h4 style="font-weight:700; color:var(--primary); margin:0;">📝 AI Generated Executive Summary</h4>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('statement-output-textarea')">Copy</button>
+                  <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadStatementDraft()">⬇ Word</button>
+                  <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="downloadStatementDraftPdf()">⬇ PDF</button>
+                </div>
               </div>
+              <textarea id="statement-output-textarea" rows="16" style="font-size:13.5px; line-height: 1.7; width: 100%; flex:1; background:transparent; border:none; resize:none; outline:none; color:var(--text-primary);" placeholder="A short, punchy bulleted Executive Summary on your fit and impact will appear here..." oninput="saveStatementField('draft', this.value)"></textarea>
             </div>
-            <textarea id="statement-output-textarea" rows="20" style="font-size:13.5px; line-height: 1.7; width: 100%; flex:1; background:transparent; border:none; resize:none; outline:none; color:var(--text-primary);" placeholder="Your tailored, high-impact personal statement draft will appear here..." oninput="saveStatementField('draft', this.value)"></textarea>
           </div>
         </div>
+
+        <!-- UNIVERSITY ADMISSION LAYOUT -->
+        <div id="statement-uni-layout" style="display:none;">
+
+          <div id="statement-uni-previous-draft-note" class="glass-card" style="display:none; margin-bottom:16px; border-color: var(--warning-border); background: var(--warning-bg);">
+            <div style="font-size:13px; font-weight:700; color:var(--warning); margin-bottom:6px;">📋 Previous draft (from before the 3-section update)</div>
+            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px; line-height:1.5;">This is read-only and kept for reference — it hasn't been deleted. Use the sections below to build your new statement.</div>
+            <div id="statement-uni-previous-draft-content" style="font-size:12.5px; color:var(--text-secondary); white-space:pre-wrap; max-height:180px; overflow-y:auto; padding:10px; background:rgba(0,0,0,0.15); border-radius:8px;"></div>
+          </div>
+
+          <div class="glass-card" style="margin-bottom:16px; border-color: var(--panel-border);">
+            <div style="font-size:12.5px; color:var(--text-secondary); line-height:1.5;">
+              💡 A strong university personal statement shows genuine motivation, backs claims up with evidence, reflects on what you actually learned, stays honest and positive, and sounds like <em>you</em> — not a template. Ask the floating help guide for more tips any time.
+            </div>
+          </div>
+
+          <!-- Section 1 -->
+          <div class="glass-card" style="margin-bottom:16px;">
+            <div class="field">
+              <label class="fl">Section 1 — Why do you want to study this course or subject?</label>
+              <textarea id="statement-uni-s1-input" rows="3" placeholder="What draws you to this subject? Be specific..." oninput="saveUniSectionField('s1','input',this.value)"></textarea>
+            </div>
+            <button class="btn-action" style="padding:8px 16px; font-size:12.5px;" id="statement-uni-s1-generate-btn" onclick="generateUniSection('s1')">Generate Section 1 Draft</button>
+            <div style="margin-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label class="fl" style="margin:0;">Draft</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <a href="javascript:void(0)" id="statement-uni-s1-output-undo" class="uni-undo-link" onclick="undoUniSection('s1')" style="display:none;">↩ Undo</a>
+                  <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('statement-uni-s1-output')">Copy</button>
+                </div>
+              </div>
+              <textarea id="statement-uni-s1-output" rows="6" style="font-size:13px; line-height:1.6; width:100%;" placeholder="Section 1 draft will appear here — editable..." oninput="saveUniSectionField('s1','draft',this.value); updateUniCounters();"></textarea>
+              <div id="statement-uni-s1-counter" class="fh" style="margin-top:4px;">0 characters (need 350+)</div>
+            </div>
+          </div>
+
+          <!-- Section 2 -->
+          <div class="glass-card" style="margin-bottom:16px;">
+            <div class="field">
+              <label class="fl">Section 2 — How have your qualifications and studies helped you prepare for this course or subject?</label>
+              <textarea id="statement-uni-s2-input" rows="3" placeholder="Which subjects, coursework, or academic experiences prepared you?" oninput="saveUniSectionField('s2','input',this.value)"></textarea>
+            </div>
+            <button class="btn-action" style="padding:8px 16px; font-size:12.5px;" id="statement-uni-s2-generate-btn" onclick="generateUniSection('s2')">Generate Section 2 Draft</button>
+            <div style="margin-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label class="fl" style="margin:0;">Draft</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <a href="javascript:void(0)" id="statement-uni-s2-output-undo" class="uni-undo-link" onclick="undoUniSection('s2')" style="display:none;">↩ Undo</a>
+                  <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('statement-uni-s2-output')">Copy</button>
+                </div>
+              </div>
+              <textarea id="statement-uni-s2-output" rows="6" style="font-size:13px; line-height:1.6; width:100%;" placeholder="Section 2 draft will appear here — editable..." oninput="saveUniSectionField('s2','draft',this.value); updateUniCounters();"></textarea>
+              <div id="statement-uni-s2-counter" class="fh" style="margin-top:4px;">0 characters (need 350+)</div>
+            </div>
+          </div>
+
+          <!-- Section 3 -->
+          <div class="glass-card" style="margin-bottom:16px;">
+            <div class="field">
+              <label class="fl">Section 3 — What else have you done to prepare outside of education, and why are these experiences useful?</label>
+              <textarea id="statement-uni-s3-input" rows="3" placeholder="Work experience, volunteering, projects, wider reading — and why they're relevant..." oninput="saveUniSectionField('s3','input',this.value)"></textarea>
+            </div>
+            <button class="btn-action" style="padding:8px 16px; font-size:12.5px;" id="statement-uni-s3-generate-btn" onclick="generateUniSection('s3')">Generate Section 3 Draft</button>
+            <div style="margin-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label class="fl" style="margin:0;">Draft</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <a href="javascript:void(0)" id="statement-uni-s3-output-undo" class="uni-undo-link" onclick="undoUniSection('s3')" style="display:none;">↩ Undo</a>
+                  <button class="btn-secondary" style="padding: 4px 10px; font-size:11px; border-radius:6px" onclick="copyText('statement-uni-s3-output')">Copy</button>
+                </div>
+              </div>
+              <textarea id="statement-uni-s3-output" rows="6" style="font-size:13px; line-height:1.6; width:100%;" placeholder="Section 3 draft will appear here — editable..." oninput="saveUniSectionField('s3','draft',this.value); updateUniCounters();"></textarea>
+              <div id="statement-uni-s3-counter" class="fh" style="margin-top:4px;">0 characters (need 350+)</div>
+            </div>
+          </div>
+
+          <!-- Combined total + export -->
+          <div class="glass-card" style="margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div id="statement-uni-total-counter" style="font-weight:600; font-size:13px;">Combined total: 0 / 4000 characters</div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn-secondary" id="statement-uni-copy-btn" disabled style="padding: 6px 12px; font-size:12px; border-radius:6px" onclick="copyUniStatement()">Copy Full Statement</button>
+                <button class="btn-secondary" id="statement-uni-word-btn" disabled style="padding: 6px 12px; font-size:12px; border-radius:6px" onclick="downloadUniStatementWord()">⬇ Word</button>
+                <button class="btn-secondary" id="statement-uni-pdf-btn" disabled style="padding: 6px 12px; font-size:12px; border-radius:6px" onclick="downloadUniStatementPdf()">⬇ PDF</button>
+              </div>
+            </div>
+            <div id="statement-uni-gate-note" class="fh" style="margin-top:8px;">Each section needs 350+ characters and the combined total must stay at or under 4000 before you can copy or download.</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -2855,6 +3019,7 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 const PRELOADED_VIJAY_STARS = []
 // Personal STAR bank data removed — add your own via the CV upload and STAR builder;
@@ -3308,6 +3473,11 @@ let speechActive = true;
 
 let uploadedCVText = '';
 let tempDirectCVText = '';
+// Tracks which entry path produced the CV text currently staged in
+// tempDirectCVText — 'student' when it came from the Student Starter CV
+// builder, 'upload' otherwise. Read once in confirmDirectProfile() and
+// stamped onto the resulting user record, then reset to the default.
+let tempProfileSource = 'upload';
 let currentGeneratedStar = null;
 let activeStarCrit = null;
 let currentMatrixData = null;
@@ -3509,7 +3679,7 @@ function showToast(msg, type = 'info', duration = 5000, action = null) {
 /* Returns true if the app has a usable AI connection configured (mock mode counts, since it needs no key) */
 function isApiConfigured() {
   if (appSettings.apiMode === 'mock') return true;
-  if (appSettings.apiMode === 'proxy' && appSettings.proxyUrl) return true;
+  if (appSettings.apiMode === 'proxy' && (appSettings.proxyUrl || DEFAULT_PROXY_URL)) return true;
   if (appSettings.apiKey && appSettings.apiKey.length > 8) return true;
   return false;
 }
@@ -3641,12 +3811,11 @@ initPinLock();
 const REF_GUIDE_SYSTEM_PROMPT = `You are a friendly, concise in-app help assistant for "Career Suite," a personal career-toolkit web app. Answer questions about how to use THIS app — where features live, what they do, and how to accomplish tasks. Keep replies SHORT (2-4 sentences max), plain and conversational — never essay-length. Never invent features that don't exist; if you don't know, say so briefly.
 
 App structure (left sidebar navigation, top to bottom):
-- Candidate Profile: upload/manage a CV. Click "+ Add Candidate" to add a profile. Accepts PDF, Word (.docx), or TXT — legacy binary .doc files are NOT supported (the app will say so and ask for .docx/PDF/TXT instead).
-- Student Starter CV: a guided builder for people with little/no work experience yet, reachable via a link on the Candidate Profile upload screen.
+- Candidate Profile: create a profile either by uploading a CV, or — for students/school leavers with little or no work experience — via the "🎓 I'm a student — build mine" option, a guided builder covering subjects/grades, positions of responsibility, extracurriculars, volunteering, work-adjacent experience, projects, achievements, skills, and interests. Both entry paths are equal-weight buttons shown side by side. Each Student Starter CV field also has its own "✨ Help me write this" button — it asks 2-3 quick guiding questions specific to that field and drafts a few sentences from your answers, which you can then edit freely. Accepts PDF, Word (.docx), or TXT for uploads — legacy binary .doc files are NOT supported (the app will say so and ask for .docx/PDF/TXT instead).
 - Career Strategy & SWOT: AI-generated Strengths/Weaknesses/Opportunities/Threats and career positioning, generated automatically from the uploaded CV once an AI connection is configured.
 - STAR Builder: builds Situation-Task-Action-Result stories for interview answers, saved to a personal STAR bank for reuse.
-- CV Tailor & Letters: paste a target Job Description to generate a Tailored Profile, Cover Letter, CV Achievements, and a Tailored STAR story. Each output has a Copy button and a Download button (Download saves a real Word .docx file, not plain text).
-- Personal Statement: builds a personal statement for job or university applications from three guided questions; also has Copy and Download (.docx) buttons.
+- CV Tailor & Letters: paste a target Job Description to generate a Tailored Profile, Cover Letter, CV Achievements, and a Tailored STAR story. Each output has a Copy button plus both a "⬇ Word" and a "⬇ PDF" download button (real .docx and .pdf files, not plain text).
+- Personal Statement: two modes. "University Admission" is split into three independent sections — (1) why you want to study this course, (2) how your qualifications/studies prepared you, (3) what else you've done outside education and why it's useful — each with its own input, its own AI-generated draft, and its own live character counter (needs 350+ characters, shown in red/amber below that and green at/above it). A combined total counter tracks all three drafts together (must stay at or under 4000 characters). Copy and Download (Word/PDF) for the full statement only unlock once every section meets its minimum and the total is within budget. "Job Application" mode generates a short bulleted Executive Summary (3-5 punchy bullet points on fit and impact) instead of a full essay, from three guided questions — it also has Copy, Word, and PDF buttons, and is marked optional for student-created profiles, who usually only need University Admission.
 - Decision Matrix: weighted scoring tool for comparing options (job offers, universities, vendors, etc.) against custom criteria. Criteria weights must total exactly 100% before it will run the evaluation.
 - Interview & Sales Coach: AI roleplay practice (interview questions or a sales call), with voice input/output and a choice of two avatars/voices — Ms. Evelyn or Mr. Arthur.
 
@@ -3654,6 +3823,7 @@ Other things you should know:
 - Local PIN lock: an optional 4-digit PIN that locks the app on this device — a privacy screen for shared/family computers, not a security system. Set or changed via the "🔒 Change PIN" (or "🔒 Set PIN") button in the sidebar footer, just below "API Key Settings." "Forgot PIN?" on the lock screen clears the PIN only — it never deletes saved profiles or CVs.
 - API Key Settings: the button in the sidebar footer to choose Sandbox/Mock mode (no key needed, sample data), a personal Gemini or Anthropic API key, or "Secure Proxy" mode (a pre-configured shared connection — just select it and save, no key needed).
 - There is also an Admin Panel for whoever manages this device's shared AI access. It exists, but you should NOT explain how to open it — if asked, say to check with whoever set up the app on this device.
+- What makes a good university personal statement (Russell Group admissions advice, condensed): show genuine insight into your motivation; spelling and grammar matter; everything must be relevant to the course; write in your own voice, not clichés or quotes from other people; back up every claim with specific evidence; reflect on what you actually learned, don't just list what you did; be unique — generic or copied material risks plagiarism screening; avoid jokes; be truthful (a personal statement is treated as a contractual document); stay positive throughout.
 
 If a question is outside the app's scope, say so briefly rather than guessing.`;
 
@@ -3662,11 +3832,11 @@ If a question is outside the app's scope, say so briefly rather than guessing.`;
 // live-AI system prompt context and the Mock-mode canned generic-help reply.
 const REF_GUIDE_SCREEN_INFO = {
   home: 'the Home/Dashboard screen — an overview with quick links into the other tools and a summary of the active candidate profile.',
-  profile: 'the Candidate Profile screen — upload/manage a CV (PDF, Word .docx, or TXT) and manage saved candidate profiles.',
+  profile: 'the Candidate Profile screen — two equal-weight ways to create a profile: "📄 Upload my CV" (PDF, Word .docx, or TXT) or "🎓 I\'m a student — build mine" (a guided builder for people with little/no work experience). Each Student Starter CV field has its own "✨ Help me write this" AI-assist button that asks a couple of quick guiding questions and drafts the field for you, editable afterwards.',
   strategy: 'the Career Strategy & SWOT screen — AI-generated Strengths/Weaknesses/Opportunities/Threats and career positioning based on the uploaded CV.',
   star: 'the STAR Builder screen — builds Situation-Task-Action-Result stories for interview answers, saved to a personal STAR bank.',
-  tailor: 'the CV Tailor & Letters screen — paste a target Job Description to generate a Tailored Profile, Cover Letter, CV Achievements, and Tailored STAR story, each with Copy and Download buttons.',
-  statement: 'the Personal Statement screen — builds a personal statement for job or university applications from three guided questions, with Copy and Download buttons.',
+  tailor: 'the CV Tailor & Letters screen — paste a target Job Description to generate a Tailored Profile, Cover Letter, CV Achievements, and Tailored STAR story, each with a Copy button and both a "⬇ Word" and a "⬇ PDF" download button.',
+  statement: 'the Personal Statement screen — "University Admission" mode has three independent sections (why this course, how your studies prepared you, what else you\'ve done outside education) each with its own input, its own AI draft, and a live character counter (350+ per section, green when met); a combined counter tracks all three against a 4000-character total, and Copy/Word/PDF only unlock once those limits are met. "Job Application" mode generates a short bulleted Executive Summary instead of a full essay, and is flagged optional for student-created profiles.',
   matrix: 'the Decision Matrix screen — a weighted scoring tool for comparing options against custom criteria; criteria weights must total exactly 100% before it will run.',
   coach: 'the Interview & Sales Coach screen — AI roleplay practice with voice input/output and a choice of two avatars/voices (Ms. Evelyn or Mr. Arthur).',
 };
@@ -3689,11 +3859,11 @@ let refGuideHistory = [];
 // empty) — screen-specific where a set exists, generic fallback otherwise.
 const REF_GUIDE_STARTERS_BY_TOOL = {
   home: ['How do I get started?', "Where's my PIN setting?", 'What can this app help me with?'],
-  profile: ['How do I upload a CV?', 'What file formats are supported?', "Where's my PIN setting?"],
+  profile: ['How do I upload a CV?', "I don't have work experience — what do I do?", 'What does the ✨ Help me write this button do?'],
   strategy: ['What is a SWOT analysis?', 'How is my SWOT generated?', 'Can I edit the SWOT myself?'],
   star: ['What does STAR stand for?', 'How do I add a STAR story?', 'Where are my STAR stories saved?'],
-  tailor: ['How does CV Tailoring work?', 'How do I download a tailored document?', 'What is the Focus Area for?'],
-  statement: ['How do I write a Personal Statement?', 'Can I use a reference statement?', 'How do I download my statement?'],
+  tailor: ['How does CV Tailoring work?', 'How do I download a tailored document as PDF?', 'What is the Focus Area for?'],
+  statement: ["What's different about the 3 sections?", 'Why do I need 350 characters minimum?', 'How is Job Application mode different from University?'],
   matrix: ['Why do my weights need to total 100%?', 'How does the Decision Matrix work?', 'Can multiple people score the same decision?'],
   coach: ['How do I start a practice interview?', 'Can I use voice instead of typing?', 'How do I switch avatars?'],
 };
@@ -3714,13 +3884,16 @@ function getRefGuideStarters(tool) {
 // upload one, even though both mention "doc").
 const REF_GUIDE_CANNED = [
   { match: /\bpin\b/i, reply: 'Set or change your device PIN via the "🔒 Change PIN" button in the sidebar footer, just below API Key Settings. "Forgot PIN?" on the lock screen clears the PIN only — your saved profiles and CVs stay put.' },
-  { match: /download|export|\.docx\b|word doc/i, reply: 'Look for the Download button next to Copy on any generated output (Personal Statement, CV Tailor sections) — it saves a real Word .docx file.' },
+  { match: /\bpdf\b/i, reply: 'Every generated output (Personal Statement, CV Tailor sections) has both a "⬇ Word" and a "⬇ PDF" button next to Copy — pick whichever format you need.' },
+  { match: /download|export|\.docx\b|word doc/i, reply: 'Look for the "⬇ Word" and "⬇ PDF" buttons next to Copy on any generated output (Personal Statement, CV Tailor sections) — both save a real file, not plain text.' },
   { match: /decision matrix|\bmatrix\b/i, reply: 'The Decision Matrix compares options (job offers, universities, etc.) by scoring them against weighted criteria you define — the weights need to add up to 100% before it will run.' },
   { match: /interview|coach|practice|roleplay/i, reply: 'The Interview & Sales Coach panel lets you practice with an AI roleplay partner — pick Ms. Evelyn or Mr. Arthur as your avatar/voice, and you can type or speak your answers.' },
   { match: /api key|secure proxy|\bsettings\b/i, reply: 'The API Key Settings button in the sidebar footer lets you pick Sandbox/Mock mode, your own API key, or Secure Proxy mode (no key needed).' },
   { match: /\bstar\b/i, reply: 'The STAR Builder helps you write Situation-Task-Action-Result stories for interview answers, saved to your personal STAR bank for later reuse.' },
-  { match: /tailor|cover letter/i, reply: 'CV Tailor & Letters takes a target Job Description and generates a Tailored Profile, Cover Letter, CV Achievements, and Tailored STAR story — each with Copy and Download buttons.' },
-  { match: /upload|\bcv\b|resume|\.doc\b|add candidate/i, reply: 'Go to Candidate Profile and click "+ Add Candidate" — you can upload a PDF, Word (.docx), or TXT file. Legacy .doc files need to be re-saved as .docx first.' },
+  { match: /tailor|cover letter/i, reply: 'CV Tailor & Letters takes a target Job Description and generates a Tailored Profile, Cover Letter, CV Achievements, and Tailored STAR story — each with Copy, Word, and PDF buttons.' },
+  { match: /350|character|minimum length/i, reply: 'Each of the 3 University Admission sections needs at least 350 characters before Copy/Download unlock, and the combined total across all 3 must stay at or under 4000 characters — the counters under each draft turn green once you\'re there.' },
+  { match: /student|no (work )?experience|school|starter cv/i, reply: 'On Candidate Profile, click "🎓 I\'m a student — build mine" instead of uploading a CV — it\'s a guided builder for subjects, activities, and achievements, and each field has a "✨ Help me write this" AI-assist button.' },
+  { match: /upload|\bcv\b|resume|\.doc\b|add candidate/i, reply: 'Go to Candidate Profile and click "📄 Upload my CV" — you can upload a PDF, Word (.docx), or TXT file. Legacy .doc files need to be re-saved as .docx first.' },
 ];
 
 // Catches generic "what is this / how does this work" style questions that
@@ -3817,7 +3990,7 @@ async function sendRefGuideMessage(presetText) {
 
 // Credentials & Settings
 let appSettings = {
-  apiMode: 'anthropic',
+  apiMode: 'proxy',
   apiKey: '',
   model: 'claude-sonnet-4-6',
   proxyUrl: ''
@@ -4991,6 +5164,7 @@ function confirmDirectProfile(prefix) {
     const confirmUpdate = confirm(`A candidate profile for "${existingUser.name}" already exists.\n\nDo you want to UPDATE this existing profile with the new CV rather than creating a duplicate?`);
     if (confirmUpdate) {
       existingUser.cv = tempDirectCVText;
+      existingUser.source = tempProfileSource;
       existingUser.baseline = { personalStatement: '', coverLetter: '', baselineSTAR: '' };
       existingUser.strategy = { goals: '', strengths: '', weaknesses: '', opportunities: '', threats: '', whyYouGeneral: '', whyYouSpecific: '', targetJD: '' };
       if (existingUser.tailored) delete existingUser.tailored;
@@ -4998,6 +5172,7 @@ function confirmDirectProfile(prefix) {
       renderSidebar();
       document.querySelectorAll('[id$="-confirm"]').forEach(el => el.style.display = 'none');
       tempDirectCVText = '';
+      tempProfileSource = 'upload';
       selectUser(existingUser.id);
 
       autoFireAnalysisIfConfigured(existingUser.id);
@@ -5009,6 +5184,7 @@ function confirmDirectProfile(prefix) {
     id: 'u_' + Date.now().toString(36),
     name: name,
     cv: tempDirectCVText,
+    source: tempProfileSource,
     starBank: [],
     strategy: {
       goals: '', strengths: '', weaknesses: '', opportunities: '', threats: '',
@@ -5020,14 +5196,15 @@ function confirmDirectProfile(prefix) {
       baselineSTAR: ''
     }
   };
-  
+
   users.push(newUser);
   saveUsersToStorage();
-  
+
   renderSidebar();
   document.querySelectorAll('[id$="-confirm"]').forEach(el => el.style.display = 'none');
   tempDirectCVText = '';
-  
+  tempProfileSource = 'upload';
+
   selectUser(newUser.id);
   autoFireAnalysisIfConfigured(newUser.id);
 }
@@ -5125,7 +5302,22 @@ function updateProfileRequiredUI() {
     if (statementMain) statementMain.style.display = 'none';
     if (profileUpload) profileUpload.style.display = 'flex';
     if (profileMain) profileMain.style.display = 'none';
+    showProfileEntryChoice();
   }
+}
+
+function showProfileEntryChoice() {
+  const choice = document.getElementById('profile-entry-choice');
+  const zone = document.getElementById('profile-upload-dropzone-section');
+  if (choice) choice.style.display = 'flex';
+  if (zone) zone.style.display = 'none';
+}
+
+function showProfileUploadZone() {
+  const choice = document.getElementById('profile-entry-choice');
+  const zone = document.getElementById('profile-upload-dropzone-section');
+  if (choice) choice.style.display = 'none';
+  if (zone) zone.style.display = 'block';
 }
 
 /* ── OVERRIDDEN INTEGRATED AVATAR PLAYBACK IN COACH ── */
@@ -6977,10 +7169,23 @@ function openModal() {
   toggleMobileSidebar(false);
   document.getElementById('modal').classList.add('open');
   clearFile();
+  showModalEntryChoice();
 }
 
 function closeModal() {
   document.getElementById('modal').classList.remove('open');
+}
+
+function showModalEntryChoice() {
+  document.getElementById('modal-entry-choice').style.display = 'flex';
+  document.getElementById('modal-entry-choice-cancel').style.display = 'flex';
+  document.getElementById('modal-upload-section').style.display = 'none';
+}
+
+function showModalUploadSection() {
+  document.getElementById('modal-entry-choice').style.display = 'none';
+  document.getElementById('modal-entry-choice-cancel').style.display = 'none';
+  document.getElementById('modal-upload-section').style.display = 'block';
 }
 
 /* ── STUDENT STARTER CV (no work experience workaround) ── */
@@ -6988,12 +7193,206 @@ function openStudentCVModal() {
   toggleMobileSidebar(false);
   ['scv-name','scv-basics','scv-subjects','scv-responsibility','scv-extracurricular',
    'scv-volunteering','scv-work','scv-projects','scv-achievements','scv-skills','scv-interests']
-    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+      delete _undoableFieldValues[id];
+      hideFieldUndo(id);
+    });
   document.getElementById('student-cv-modal').classList.add('open');
 }
 
 function closeStudentCVModal() {
   document.getElementById('student-cv-modal').classList.remove('open');
+}
+
+/* ── AI ASSIST: per-field guided drafting for the Student Starter CV ──
+   Each field gets its own small set of guiding questions (genuinely
+   specific to what that field is for, not a generic "tell me about this"),
+   so the AI has enough to draft a few usable sentences. */
+const STUDENT_CV_AI_ASSIST = {
+  'scv-basics': {
+    label: 'Year Group / School / Intended University Start Year',
+    questions: [
+      'What year/grade are you in, and at which school or college?',
+      'What subject or course do you plan to apply for, and roughly when?',
+      'Anything else worth mentioning (e.g. re-sitting, gap year plans)?'
+    ]
+  },
+  'scv-subjects': {
+    label: 'Subjects & Grades',
+    questions: [
+      'Which subjects are you studying (or did you study for GCSEs), and what grades did/do you expect?',
+      'Which of these are most relevant to what you want to study next?',
+      'Any academic achievements tied to these subjects worth mentioning (e.g. top of class, a prize)?'
+    ]
+  },
+  'scv-responsibility': {
+    label: 'Positions of Responsibility',
+    questions: [
+      'What role/title did you hold (e.g. Head Girl, Form Rep, Team Captain)?',
+      'What did you actually do day-to-day in that role?',
+      "What's one thing that improved because of you?"
+    ]
+  },
+  'scv-extracurricular': {
+    label: 'Extracurricular Activities & Clubs',
+    questions: [
+      'What clubs, teams, or activities are you part of?',
+      'How long have you been doing this, and how often?',
+      'What have you achieved or improved through it (a skill, a level, a badge)?'
+    ]
+  },
+  'scv-volunteering': {
+    label: 'Volunteering & Community Involvement',
+    questions: [
+      'What volunteering or community work have you done, and where?',
+      'How regularly, and for how long?',
+      'What impact did it have — on others, or on you?'
+    ]
+  },
+  'scv-work': {
+    label: 'Work-Adjacent Experience',
+    questions: [
+      'What kind of work-adjacent experience have you had (babysitting, tutoring, family business, Saturday job, work shadowing)?',
+      'What did you actually do there?',
+      'What did you learn about work, or about yourself, from it?'
+    ]
+  },
+  'scv-projects': {
+    label: 'Independent Projects & Super-Curricular Learning',
+    questions: [
+      'What project, course, or independent study did you complete (EPQ, MOOC, competition, wider reading)?',
+      'What was it about, and why did you choose it?',
+      "What skill or insight did it give you that's relevant to what you want to study?"
+    ]
+  },
+  'scv-achievements': {
+    label: 'Achievements & Awards',
+    questions: [
+      'What award, prize, or recognition did you receive?',
+      'What did you do to earn it?',
+      'Roughly how competitive was it (school-level, county, national)?'
+    ]
+  },
+  'scv-skills': {
+    label: 'Skills',
+    questions: [
+      "What's one skill you're confident in?",
+      'What evidence shows you have it (a specific moment or activity)?',
+      'Is there a second skill worth mentioning, with its own evidence?'
+    ]
+  },
+  'scv-interests': {
+    label: 'Interests Relevant to Intended Course/Field',
+    questions: [
+      'What subject or field are you hoping to study or pursue?',
+      'What have you read, watched, or attended related to it outside class?',
+      'What about it genuinely interests you?'
+    ]
+  }
+};
+
+let _aiAssistTargetField = null;
+
+function openAiAssist(fieldId) {
+  const config = STUDENT_CV_AI_ASSIST[fieldId];
+  if (!config) return;
+  _aiAssistTargetField = fieldId;
+
+  document.getElementById('ai-assist-field-title').textContent = config.label;
+  const container = document.getElementById('ai-assist-questions');
+  container.innerHTML = config.questions.map((q, i) => `
+    <div class="field">
+      <label class="fl">${q}</label>
+      <textarea id="ai-assist-answer-${i}" rows="2" placeholder="Your answer..."></textarea>
+    </div>
+  `).join('');
+
+  document.getElementById('ai-assist-modal').classList.add('open');
+}
+
+function closeAiAssist() {
+  document.getElementById('ai-assist-modal').classList.remove('open');
+  _aiAssistTargetField = null;
+}
+
+/* ── SINGLE-LEVEL UNDO for AI "replace" actions ──
+   Shared by the Student Starter CV field helper and the University
+   Personal Statement section generator: before an AI draft overwrites a
+   field's current content, the previous value is stashed here (in memory
+   only — not persisted across reload) keyed by the target element's id,
+   and a "↩ Undo" link next to that field is revealed. Only the single
+   most recent previous value is kept per field; a second Generate before
+   undoing overwrites it, matching the "single-level undo only" scope. */
+let _undoableFieldValues = {};
+
+function armFieldUndo(elementId, previousValue) {
+  _undoableFieldValues[elementId] = previousValue;
+  const undoEl = document.getElementById(`${elementId}-undo`);
+  if (undoEl) undoEl.style.display = 'inline';
+}
+
+function hideFieldUndo(elementId) {
+  const undoEl = document.getElementById(`${elementId}-undo`);
+  if (undoEl) undoEl.style.display = 'none';
+}
+
+function undoAiAssistField(fieldId) {
+  if (!(fieldId in _undoableFieldValues)) return;
+  const target = document.getElementById(fieldId);
+  if (target) target.value = _undoableFieldValues[fieldId];
+  delete _undoableFieldValues[fieldId];
+  hideFieldUndo(fieldId);
+}
+
+async function generateAiAssistDraft() {
+  const fieldId = _aiAssistTargetField;
+  const config = STUDENT_CV_AI_ASSIST[fieldId];
+  if (!fieldId || !config) return;
+
+  const answers = config.questions.map((q, i) => {
+    const val = (document.getElementById(`ai-assist-answer-${i}`).value || '').trim();
+    return { q, val };
+  }).filter(a => a.val);
+
+  if (answers.length === 0) {
+    alert('Please answer at least one question so the AI has something to work with.');
+    return;
+  }
+
+  const btn = document.getElementById('ai-assist-generate-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Writing...';
+
+  try {
+    let draft = '';
+    if (appSettings.apiMode === 'mock') {
+      await new Promise(r => setTimeout(r, 900));
+      draft = answers.map(a => a.val).join('. ').replace(/\.\.$/, '.') + '.';
+    } else {
+      const system = `You are helping a school/college student draft one section of a "Student Starter CV" — a CV for someone with little or no formal work experience yet.
+      Write 2-4 concise, natural-sounding sentences in the first person for the "${config.label}" section, based on the student's answers below.
+      Be specific and concrete (use the details they gave you), avoid generic filler, avoid corporate/adult jargon, and do not invent facts they did not mention.
+      Return plain text only — no headings, no markdown, no bullet points.`;
+      const prompt = answers.map(a => `Q: ${a.q}\nA: ${a.val}`).join('\n\n');
+      draft = await runAICall(system, prompt, false);
+    }
+
+    if (!draft) throw new Error('AI returned an empty response.');
+
+    const target = document.getElementById(fieldId);
+    if (target) {
+      armFieldUndo(fieldId, target.value);
+      target.value = draft.trim();
+    }
+    closeAiAssist();
+  } catch (err) {
+    alert('AI assist failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Generate';
+  }
 }
 
 function buildStudentStarterCV() {
@@ -7034,6 +7433,7 @@ function buildStudentStarterCV() {
   // Feed the compiled text into the same creation pipeline used for uploaded CVs,
   // so it unlocks Personal Statement / CV Tailor / Career Strategy / STAR Builder identically.
   tempDirectCVText = cvText.trim();
+  tempProfileSource = 'student';
   document.getElementById('direct-profile-name').value = name;
   closeStudentCVModal();
   confirmDirectProfile('profile');
@@ -7368,40 +7768,70 @@ async function performReplace(file) {
   }
 }
 
-/* ── TOOL: PERSONAL STATEMENT BUILDER ── */
+/* ── TOOL: PERSONAL STATEMENT BUILDER ──
+   Job Application mode keeps the original single-output, three-question flow
+   (now generating a short bulleted Executive Summary rather than an essay).
+   University Admission mode uses three independent sections — own input, own
+   generated draft, own char counter — stored in user.statement.uniSections
+   alongside (never replacing) the original type/q1/q2/q3/referenceText/draft
+   fields, so old data and Job Application mode are unaffected. */
+const RUSSELL_GROUP_TIPS_SUMMARY = `1. Show genuine insight into your motivation for this subject.
+2. Spelling and grammar matter — get them right.
+3. Everything you include must be relevant to the course.
+4. Write in your own voice — avoid clichés and quotes.
+5. Back up every claim with specific evidence, not just assertions.
+6. Reflect on what you actually learned, don't just describe what you did.
+7. Be unique and personal — generic material risks plagiarism screening.
+8. Avoid jokes.
+9. Be truthful — a personal statement is treated as a contractual document.
+10. Stay positive throughout.`;
+
+const UNI_SECTION_CONFIG = {
+  s1: { label: 'Why do you want to study this course or subject?', short: 'Motivation' },
+  s2: { label: 'How have your qualifications and studies helped you prepare for this course or subject?', short: 'Academic preparation' },
+  s3: { label: 'What else have you done to prepare outside of education, and why are these experiences useful?', short: 'Wider preparation' }
+};
+const UNI_SECTION_MIN_CHARS = 350;
+const UNI_TOTAL_MAX_CHARS = 4000;
+
 function updateStatementQuestions() {
   const type = document.getElementById('statement-type').value;
-  const q1Lbl = document.getElementById('lbl-statement-q1');
-  const q2Lbl = document.getElementById('lbl-statement-q2');
-  const q3Lbl = document.getElementById('lbl-statement-q3');
-  const q1Text = document.getElementById('statement-q1');
-  const q2Text = document.getElementById('statement-q2');
-  const q3Text = document.getElementById('statement-q3');
+  const jobLayout = document.getElementById('statement-job-layout');
+  const uniLayout = document.getElementById('statement-uni-layout');
+  if (jobLayout) jobLayout.style.display = type === 'job' ? 'block' : 'none';
+  if (uniLayout) uniLayout.style.display = type === 'university' ? 'block' : 'none';
 
-  if (!q1Lbl || !q2Lbl || !q3Lbl || !q1Text || !q2Text || !q3Text) return;
-
-  if (type === 'job') {
-    q1Lbl.textContent = '1. Why are you interested in this specific role and company?';
-    q1Text.placeholder = 'e.g. Discuss your alignment with their values, what excites you about the company culture, or specific projects they are working on...';
-    
-    q2Lbl.textContent = '2. What core professional achievements demonstrate your suitability?';
-    q2Text.placeholder = 'e.g. List 1-2 major projects, commercial savings, digital platform rollouts, or scale of responsibilities...';
-    
-    q3Lbl.textContent = '3. How does this role align with your long-term career progression?';
-    q3Text.placeholder = 'e.g. Discuss your transition path (e.g. pivoting into product management) or developing wider strategic leadership...';
-  } else {
-    q1Lbl.textContent = '1. Why do you want to study this specific course/program?';
-    q1Text.placeholder = 'e.g. Mention specific modules, academic interests, or the unique reputation of the university...';
-    
-    q2Lbl.textContent = '2. How does your academic or professional background prepare you for this course?';
-    q2Text.placeholder = 'e.g. Highlight transferable skills, degree coursework, professional certifications, or direct industry experience...';
-    
-    q3Lbl.textContent = '3. What are your future career goals after graduation?';
-    q3Text.placeholder = 'e.g. Specify target industries, roles (e.g. joining Net Zero/ESG taskforces), or continuing research/leadership plans...';
+  if (type === 'university') {
+    renderUniPreviousDraftNote();
+    updateUniCounters();
   }
 
-  // Update save
   saveStatementField('type', type);
+}
+
+// Shows old (pre-3-section) q1/q2/q3/draft data read-only, if it exists and
+// belongs to a prior University Admission session — nothing is deleted, this
+// is purely a "don't let it silently vanish" surface for existing users.
+function renderUniPreviousDraftNote() {
+  const user = users.find(u => u.id === activeUserId);
+  const note = document.getElementById('statement-uni-previous-draft-note');
+  const content = document.getElementById('statement-uni-previous-draft-content');
+  if (!note || !content || !user || !user.statement) return;
+
+  const d = user.statement;
+  const hasLegacyUniData = d.type === 'university' && (d.q1 || d.q2 || d.q3 || d.draft);
+  if (!hasLegacyUniData) {
+    note.style.display = 'none';
+    return;
+  }
+
+  let text = '';
+  if (d.q1) text += `Q1: ${d.q1}\n\n`;
+  if (d.q2) text += `Q2: ${d.q2}\n\n`;
+  if (d.q3) text += `Q3: ${d.q3}\n\n`;
+  if (d.draft) text += `Draft:\n${d.draft}`;
+  content.textContent = text.trim();
+  note.style.display = 'block';
 }
 
 function populateStatementUI(user) {
@@ -7415,25 +7845,49 @@ function populateStatementUI(user) {
       draft: ''
     };
   }
-  
+  if (!user.statement.uniSections) {
+    user.statement.uniSections = {
+      s1: { input: '', draft: '' },
+      s2: { input: '', draft: '' },
+      s3: { input: '', draft: '' }
+    };
+  }
+
   const data = user.statement;
   const typeSelect = document.getElementById('statement-type');
   if (typeSelect) typeSelect.value = data.type || 'job';
-  
-  updateStatementQuestions();
-  
+
   const q1 = document.getElementById('statement-q1');
   if (q1) q1.value = data.q1 || '';
   const q2 = document.getElementById('statement-q2');
   if (q2) q2.value = data.q2 || '';
   const q3 = document.getElementById('statement-q3');
   if (q3) q3.value = data.q3 || '';
-  
+
   const ref = document.getElementById('statement-reference-text');
   if (ref) ref.value = data.referenceText || '';
-  
+
   const out = document.getElementById('statement-output-textarea');
   if (out) out.value = data.draft || '';
+
+  ['s1', 's2', 's3'].forEach(key => {
+    const sec = data.uniSections[key] || { input: '', draft: '' };
+    const inputEl = document.getElementById(`statement-uni-${key}-input`);
+    const outputEl = document.getElementById(`statement-uni-${key}-output`);
+    if (inputEl) inputEl.value = sec.input || '';
+    if (outputEl) outputEl.value = sec.draft || '';
+    // Reloading this panel's data (e.g. switching to a different candidate)
+    // invalidates any pending undo from a previous session/user — an undo
+    // link left visible here would restore the wrong person's old draft.
+    const outputElId = `statement-uni-${key}-output`;
+    delete _undoableFieldValues[outputElId];
+    hideFieldUndo(outputElId);
+  });
+
+  const noteEl = document.getElementById('statement-student-optional-note');
+  if (noteEl) noteEl.style.display = user.source === 'student' ? 'block' : 'none';
+
+  updateStatementQuestions();
 }
 
 function saveStatementField(field, val) {
@@ -7445,18 +7899,30 @@ function saveStatementField(field, val) {
   }
 }
 
+function saveUniSectionField(sectionKey, field, val) {
+  const user = users.find(u => u.id === activeUserId);
+  if (user) {
+    if (!user.statement) user.statement = {};
+    if (!user.statement.uniSections) {
+      user.statement.uniSections = { s1: { input: '', draft: '' }, s2: { input: '', draft: '' }, s3: { input: '', draft: '' } };
+    }
+    if (!user.statement.uniSections[sectionKey]) user.statement.uniSections[sectionKey] = { input: '', draft: '' };
+    user.statement.uniSections[sectionKey][field] = val;
+    saveUsersToStorage();
+  }
+}
+
 async function generatePersonalStatement() {
   const user = users.find(u => u.id === activeUserId);
   if (!user) return;
 
-  const type = document.getElementById('statement-type').value;
   const q1Val = document.getElementById('statement-q1').value.trim();
   const q2Val = document.getElementById('statement-q2').value.trim();
   const q3Val = document.getElementById('statement-q3').value.trim();
   const refVal = document.getElementById('statement-reference-text').value.trim();
 
   if (!q1Val || !q2Val || !q3Val) {
-    alert("Please answer all three questions to help draft your personal statement.");
+    alert("Please answer all three questions to help draft your executive summary.");
     return;
   }
 
@@ -7464,46 +7930,37 @@ async function generatePersonalStatement() {
   const out = document.getElementById('statement-output-textarea');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="spin"></span> Generating Statement...';
+    btn.innerHTML = '<span class="spin"></span> Generating Summary...';
   }
   if (out) {
     out.value = '';
-    out.placeholder = '⏳ Writing your personalized statement based on CV, answers, and exemplar style...';
+    out.placeholder = '⏳ Writing your executive summary based on CV, answers, and exemplar style...';
   }
 
   try {
     let draft = "";
     if (appSettings.apiMode === 'mock') {
-      await new Promise(r => setTimeout(r, 1800));
-      if (type === 'job') {
-        draft = `### **Personal Statement**\n\nI am writing to express my strong candidacy for this position, drawing on a career spanning over two decades of strategic procurement and supply chain transformation. Throughout my career, I have consistently aligned commercial negotiation processes with long-term strategic outcomes, managing spends exceeding $800M and generating over $60M in annual savings.\n\nMy interest in this role stems from your company's focus on sustainable scaling and agile transformation. In my previous leadership positions, I navigated complex transitions—such as moving legacy ERP workflows onto consolidated cloud networks—which directly correlates with the digital milestones of this target role.\n\nRegarding my suitability, I bring direct, hands-on experience in leading high-performing international teams across the UK, US, and India. Additionally, my background in ESG integration allows me to ensure that procurement pipelines not only reduce costs but also comply with net-zero target grids. I look forward to contributing my strategic alignment skills and commercial rigor to your leadership team.`;
-      } else {
-        draft = `### **Personal Statement**\n\nHaving established a successful career in global supply chain logistics, database operations, and executive leadership, I am writing to apply for admission to this advanced academic program. My primary goal is to deepen my strategic framework knowledge, particularly at the intersection of international commercial policy and net-zero sustainability grids.\n\nThis course is highly relevant to my next professional phase, where I plan to lead regional sustainability initiatives and implement scope-3 supplier compliance auditing. The university's research focus in technology integration aligns perfectly with my professional history of deploying cloud networks and database performance tuning.\n\nAcademically and professionally, I am prepared for the rigors of this program. Holding a solid foundation in business management and analytical methodologies (backed by LSS Green Belt training), I offer a mature, real-world perspective to class discussions. I am eager to leverage this degree to pivot into strategic sustainability policymaking.`;
-      }
+      await new Promise(r => setTimeout(r, 1500));
+      draft = `### Executive Summary\n\n- Over two decades of strategic procurement and supply chain transformation, managing spends exceeding $800M and delivering $60M+ in annual savings.\n- Directly aligned with this company's focus on sustainable scaling — led legacy ERP migrations onto consolidated cloud networks with measurable commercial impact.\n- Proven leadership of high-performing international teams across the UK, US, and India.\n- Track record of embedding ESG/net-zero compliance into procurement pipelines without sacrificing cost discipline.\n- Ready to bring strategic alignment skills and commercial rigor to this role from day one.`;
     } else {
-      const system = `You are an expert career strategist and executive writer. Write a highly professional, polished Personal Statement in the first person ("I").
-      Use the candidate's CV as background context, and use their direct answers to prompt questions to supply specific details.
-      
-      CRITICAL Tone and Style Rules:
-      1. Write in a mature, authentic, intellectually honest, and professional tone.
-      2. If the user provided a "Reference/Exemplar Personal Statement", analyze and mimic its level of sophistication, vocabulary complexity, paragraph structure, and stylistic rhythm. Do NOT copy the exact details from the reference statement, but align the writing style closely.
-      3. Do NOT invent fake company names or fake credentials. Use generic placeholders (like "[Company Name]") if specific names are needed but missing.
-      4. Format the output with clean markdown paragraphs. Do not wrap in markdown code blocks.`;
+      const system = `You are an expert career strategist and executive writer. Write a short, punchy Executive Summary for a job application — NOT a full essay or multi-paragraph statement.
+      Output 3-5 bulleted points (markdown "- " list items) that are concrete, evidence-backed, and focused on fit and impact — not generic claims.
+      Use the candidate's CV as background context, and use their direct answers to the prompt questions to supply specific details.
 
-      let prompt = `Application Type: ${type === 'job' ? 'Job Application' : 'University Admission'}\n\n`;
+      CRITICAL Tone and Style Rules:
+      1. Each bullet should be one punchy sentence — no filler, no throat-clearing.
+      2. If the user provided a "Reference/Exemplar Personal Statement", let it inform tone and vocabulary level, not structure (the output is still bullets).
+      3. Do NOT invent fake company names or fake credentials. Use generic placeholders (like "[Company Name]") if specific names are needed but missing.
+      4. Return markdown only: an "### Executive Summary" heading followed by 3-5 "- " bullet points. No paragraphs.`;
+
+      let prompt = `Application Type: Job Application\n\n`;
       prompt += `Candidate CV:\n${user.cv}\n\n`;
       prompt += `Prompt Question Answers:\n`;
-      if (type === 'job') {
-        prompt += `- Question 1 (Why interested): ${q1Val}\n`;
-        prompt += `- Question 2 (Suitable Achievements): ${q2Val}\n`;
-        prompt += `- Question 3 (Career Alignment): ${q3Val}\n`;
-      } else {
-        prompt += `- Question 1 (Why study course): ${q1Val}\n`;
-        prompt += `- Question 2 (Background Prep): ${q2Val}\n`;
-        prompt += `- Question 3 (Future Career Goals): ${q3Val}\n`;
-      }
+      prompt += `- Question 1 (Why interested): ${q1Val}\n`;
+      prompt += `- Question 2 (Suitable Achievements): ${q2Val}\n`;
+      prompt += `- Question 3 (Career Alignment): ${q3Val}\n`;
       if (refVal) {
-        prompt += `\nExemplar/Reference Statement (mimic this tone/structure):\n${refVal}\n`;
+        prompt += `\nExemplar/Reference Statement (tone/vocabulary reference only):\n${refVal}\n`;
       }
 
       draft = await runAICall(system, prompt, false);
@@ -7526,9 +7983,192 @@ async function generatePersonalStatement() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = 'Generate First Draft';
+      btn.innerHTML = 'Generate Executive Summary';
     }
   }
+}
+
+async function generateUniSection(sectionKey) {
+  const user = users.find(u => u.id === activeUserId);
+  if (!user) return;
+  const config = UNI_SECTION_CONFIG[sectionKey];
+  if (!config) return;
+
+  const inputVal = document.getElementById(`statement-uni-${sectionKey}-input`).value.trim();
+  const refVal = document.getElementById('statement-reference-text').value.trim();
+
+  if (!inputVal) {
+    alert(`Please add some notes for "${config.label}" first so the AI has something to work with.`);
+    return;
+  }
+
+  const btn = document.getElementById(`statement-uni-${sectionKey}-generate-btn`);
+  const out = document.getElementById(`statement-uni-${sectionKey}-output`);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> Generating...';
+  }
+
+  try {
+    let draft = "";
+    if (appSettings.apiMode === 'mock') {
+      await new Promise(r => setTimeout(r, 1200));
+      draft = `This section draws directly on the candidate's own notes: "${inputVal}". In practice, this means demonstrating genuine, specific motivation backed by real evidence rather than generic claims — reflecting honestly on what was actually learned along the way, in the candidate's own authentic voice, while staying focused, positive, and strictly relevant to the course applied for. (Sandbox/Mock preview — connect a live AI key or Secure Proxy for a fully personalised draft of at least 350 characters.)`;
+    } else {
+      const system = `You are helping a student write ONE section of a UK university admissions personal statement. Write only this section — do not write an introduction or conclusion for the whole statement, and do not address the other two sections.
+
+      This section answers: "${config.label}"
+
+      Follow these guidelines strictly (based on Russell Group admissions advice):
+      ${RUSSELL_GROUP_TIPS_SUMMARY}
+
+      Additional rules:
+      - Write in the first person, in the student's own authentic voice — never a template or generic tone.
+      - Every claim must be specific and evidenced by something the student actually mentioned.
+      - Reflect on what was learned or how the student grew, don't just list activities.
+      - No jokes, no clichés, no quotations from other people.
+      - Be truthful — do not invent facts, grades, or experiences the student didn't mention.
+      - Stay positive throughout.
+      - Aim for at least 350 characters so the section is substantive.
+      - Return plain text only — no headings, no markdown, no bullet points.`;
+
+      let prompt = `Candidate CV (background context):\n${user.cv}\n\n`;
+      prompt += `Student's notes for this section:\n${inputVal}\n`;
+      if (refVal) {
+        prompt += `\nExemplar/Reference Statement (tone/vocabulary reference only — do not copy its content):\n${refVal}\n`;
+      }
+
+      draft = await runAICall(system, prompt, false);
+    }
+
+    if (!draft) throw new Error("AI returned an empty response.");
+
+    if (out) {
+      armFieldUndo(`statement-uni-${sectionKey}-output`, out.value);
+      out.value = draft.trim();
+    }
+    saveUniSectionField(sectionKey, 'draft', draft.trim());
+    updateUniCounters();
+
+  } catch (err) {
+    console.error(`University statement section ${sectionKey} generation failed`, err);
+    alert("Generation failed: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `Generate Section ${sectionKey.replace('s', '')} Draft`;
+    }
+  }
+}
+
+// Restores a University section's draft to whatever it held immediately
+// before the most recent Generate — the counters/gate must be recalculated
+// and the (now-reverted) value re-persisted, since setting .value directly
+// doesn't fire the textarea's oninput handler.
+function undoUniSection(sectionKey) {
+  const elementId = `statement-uni-${sectionKey}-output`;
+  if (!(elementId in _undoableFieldValues)) return;
+  const target = document.getElementById(elementId);
+  const restored = _undoableFieldValues[elementId];
+  if (target) target.value = restored;
+  delete _undoableFieldValues[elementId];
+  hideFieldUndo(elementId);
+  saveUniSectionField(sectionKey, 'draft', restored);
+  updateUniCounters();
+}
+
+// Live char-count enforcement for University mode — mirrors the Decision
+// Matrix's 100%-weight gating pattern: a live colored label plus a hard
+// block (disabled buttons here, an early-return alert on the matrix) rather
+// than silently letting an invalid state through.
+function updateUniCounters() {
+  let total = 0;
+  let allSectionsMeetMin = true;
+
+  ['s1', 's2', 's3'].forEach(key => {
+    const outputEl = document.getElementById(`statement-uni-${key}-output`);
+    const counterEl = document.getElementById(`statement-uni-${key}-counter`);
+    const len = outputEl ? outputEl.value.length : 0;
+    total += len;
+    const meetsMin = len >= UNI_SECTION_MIN_CHARS;
+    if (!meetsMin) allSectionsMeetMin = false;
+
+    if (counterEl) {
+      counterEl.textContent = meetsMin
+        ? `${len} characters ✓`
+        : `${len} characters (need ${UNI_SECTION_MIN_CHARS}+)`;
+      counterEl.style.color = meetsMin ? 'var(--success)' : 'var(--danger)';
+    }
+  });
+
+  const totalEl = document.getElementById('statement-uni-total-counter');
+  const withinMax = total <= UNI_TOTAL_MAX_CHARS;
+  if (totalEl) {
+    totalEl.textContent = `Combined total: ${total} / ${UNI_TOTAL_MAX_CHARS} characters`;
+    totalEl.style.color = withinMax ? 'var(--success)' : 'var(--danger)';
+  }
+
+  const canExport = allSectionsMeetMin && withinMax;
+  ['statement-uni-copy-btn', 'statement-uni-word-btn', 'statement-uni-pdf-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !canExport;
+  });
+
+  const gateNote = document.getElementById('statement-uni-gate-note');
+  if (gateNote) {
+    gateNote.textContent = canExport
+      ? 'All sections meet the minimum length and the combined total is within budget — Copy and Download are unlocked.'
+      : 'Each section needs 350+ characters and the combined total must stay at or under 4000 before you can copy or download.';
+  }
+}
+
+function isUniStatementExportReady() {
+  let total = 0;
+  for (const key of ['s1', 's2', 's3']) {
+    const el = document.getElementById(`statement-uni-${key}-output`);
+    const len = el ? el.value.length : 0;
+    if (len < UNI_SECTION_MIN_CHARS) return false;
+    total += len;
+  }
+  return total <= UNI_TOTAL_MAX_CHARS;
+}
+
+function getCombinedUniStatementText() {
+  return ['s1', 's2', 's3'].map(key => {
+    const config = UNI_SECTION_CONFIG[key];
+    const el = document.getElementById(`statement-uni-${key}-output`);
+    return `### ${config.short}\n\n${el ? el.value.trim() : ''}`;
+  }).join('\n\n');
+}
+
+function copyUniStatement() {
+  if (!isUniStatementExportReady()) {
+    alert("Each section needs 350+ characters and the combined total must stay at or under 4000 before you can copy.");
+    return;
+  }
+  navigator.clipboard.writeText(getCombinedUniStatementText())
+    .then(() => alert('Full statement copied to clipboard.'))
+    .catch(() => alert('Could not copy — please copy manually.'));
+}
+
+function downloadUniStatementWord() {
+  if (!isUniStatementExportReady()) {
+    alert("Each section needs 350+ characters and the combined total must stay at or under 4000 before you can download.");
+    return;
+  }
+  const user = users.find(u => u.id === activeUserId);
+  const prefix = user ? user.name.replace(/\s+/g, '_') : 'Candidate';
+  downloadAsWordDoc('Personal Statement — University Admission', getCombinedUniStatementText(), `${prefix}_Personal_Statement_university`);
+}
+
+function downloadUniStatementPdf() {
+  if (!isUniStatementExportReady()) {
+    alert("Each section needs 350+ characters and the combined total must stay at or under 4000 before you can download.");
+    return;
+  }
+  const user = users.find(u => u.id === activeUserId);
+  const prefix = user ? user.name.replace(/\s+/g, '_') : 'Candidate';
+  downloadAsPdf('Personal Statement — University Admission', getCombinedUniStatementText(), `${prefix}_Personal_Statement_university`);
 }
 
 /* Shared Word-doc exporter: wraps markdown/plain text into simple styled HTML
@@ -7582,6 +8222,102 @@ ${bodyHtml}
   URL.revokeObjectURL(url);
 }
 
+/* Shared PDF exporter, mirroring downloadAsWordDoc's heading/title treatment
+   as closely as jsPDF's plain-text API allows: a brand-colored H1 title with
+   a rule underneath, then the body — headings (### /##) rendered bold and
+   larger, "- "/"* " bullet lines indented with a bullet glyph, everything
+   else as word-wrapped paragraphs. Markdown emphasis markers (bold/italic)
+   are stripped rather than rendered, since inline bold/italic runs aren't
+   practical with jsPDF's line-based text API. */
+function downloadAsPdf(title, bodyText, filename) {
+  if (!bodyText) {
+    alert("No content to download.");
+    return;
+  }
+  if (typeof window.jspdf === 'undefined') {
+    alert("PDF export library failed to load (check your internet connection) and try again.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const brandColor = [99, 102, 241]; // matches the Word export's brand accent
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 56;
+  let y = 60;
+
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  function ensureRoom(lineHeight) {
+    if (y + lineHeight > pageHeight - 50) {
+      doc.addPage();
+      y = 60;
+    }
+  }
+
+  // Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(brandColor[0], brandColor[1], brandColor[2]);
+  doc.text(String(title), marginX, y);
+  y += 8;
+  doc.setDrawColor(brandColor[0], brandColor[1], brandColor[2]);
+  doc.setLineWidth(1.5);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 18;
+
+  // Subtitle
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(107, 114, 128);
+  doc.text(`Career Suite — ${title} · ${dateStr}`, marginX, y);
+  y += 26;
+
+  const maxWidth = pageWidth - marginX * 2;
+  const stripInline = t => t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+  const rawLines = String(bodyText).split(/\r?\n/);
+
+  rawLines.forEach(rawLine => {
+    const line = rawLine.trim();
+    if (!line) { y += 8; return; }
+
+    if (/^#{1,3}\s+/.test(line)) {
+      const text = stripInline(line.replace(/^#{1,3}\s+/, ''));
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(brandColor[0], brandColor[1], brandColor[2]);
+      const wrapped = doc.splitTextToSize(text, maxWidth);
+      wrapped.forEach(w => { ensureRoom(18); doc.text(w, marginX, y); y += 16; });
+      y += 6;
+      return;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      const text = stripInline(line.replace(/^[-*]\s+/, ''));
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(26, 26, 26);
+      const wrapped = doc.splitTextToSize(text, maxWidth - 16);
+      wrapped.forEach((w, i) => {
+        ensureRoom(15);
+        doc.text(i === 0 ? `•  ${w}` : `    ${w}`, marginX, y);
+        y += 15;
+      });
+      return;
+    }
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(26, 26, 26);
+    const wrapped = doc.splitTextToSize(stripInline(line), maxWidth);
+    wrapped.forEach(w => { ensureRoom(15); doc.text(w, marginX, y); y += 15; });
+    y += 4;
+  });
+
+  doc.save(filename.toLowerCase().endsWith('.pdf') ? filename : filename + '.pdf');
+}
+
 /* Download helper for CV Tailor & Letters outputs (Tailored Profile, Cover Letter,
    CV Achievements, Tailored STAR) — reads the live textarea value so any manual edits
    the user made are included, matching what Copy sends to the clipboard. */
@@ -7597,6 +8333,18 @@ function downloadTailorOutput(elementId, title, fileSuffix) {
   downloadAsWordDoc(title, text, `${prefix}_${fileSuffix}`);
 }
 
+function downloadTailorOutputPdf(elementId, title, fileSuffix) {
+  const el = document.getElementById(elementId);
+  const text = el ? el.value : '';
+  if (!text) {
+    alert("No generated content to download yet.");
+    return;
+  }
+  const user = users.find(u => u.id === activeUserId);
+  const prefix = user ? user.name.replace(/\s+/g, '_') : 'Candidate';
+  downloadAsPdf(title, text, `${prefix}_${fileSuffix}`);
+}
+
 function downloadStatementDraft() {
   const text = document.getElementById('statement-output-textarea').value;
   if (!text) {
@@ -7609,6 +8357,20 @@ function downloadStatementDraft() {
   const type = document.getElementById('statement-type').value;
 
   downloadAsWordDoc('Personal Statement', text, `${prefix}_Personal_Statement_${type}`);
+}
+
+function downloadStatementDraftPdf() {
+  const text = document.getElementById('statement-output-textarea').value;
+  if (!text) {
+    alert("No generated statement content to download.");
+    return;
+  }
+
+  const user = users.find(u => u.id === activeUserId);
+  const prefix = user ? user.name.replace(/\s+/g, '_') : 'Candidate';
+  const type = document.getElementById('statement-type').value;
+
+  downloadAsPdf('Personal Statement', text, `${prefix}_Personal_Statement_${type}`);
 }
 
 // Multi-turn conversation call — passes full messages array (for interview/sales coach)
@@ -7727,10 +8489,11 @@ async function runAICall(systemPrompt, userPrompt, isJson = false) {
 // Routes an AI call through the family's Cloudflare Worker instead of a
 // browser-held key — see worker.js for the server-side implementation.
 async function callSecureProxy(systemPrompt, messages) {
-  if (!appSettings.proxyUrl) {
+  const proxyUrl = appSettings.proxyUrl || DEFAULT_PROXY_URL;
+  if (!proxyUrl) {
     throw new Error("No Secure Proxy URL configured. Ask the admin to set one up in the Admin Panel.");
   }
-  const response = await fetch(appSettings.proxyUrl, {
+  const response = await fetch(proxyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ system: systemPrompt, messages: messages })
