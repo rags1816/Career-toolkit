@@ -198,6 +198,24 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
   color: var(--text-secondary);
 }
 
+/* Brief shake/glow anchored on the exact nav item a locked-tool click
+   landed on, additive to the corner showToast() — so the feedback isn't
+   only in a corner the student might not be looking at. Self-removing via
+   a setTimeout in pulseLockedNavItem(), not animation-iteration-count,
+   so rapid repeat clicks can restart it cleanly. */
+@keyframes navLockedShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+.nav-item.nav-locked-shake {
+  animation: navLockedShake 0.5s ease-in-out;
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.25);
+}
+
 .ulist-container {
   flex: 1;
   overflow-y: auto;
@@ -1228,6 +1246,19 @@ textarea {
   border-color: var(--primary);
   box-shadow: 0 8px 25px var(--primary-glow);
 }
+/* Mirrors .nav-item.nav-locked so a locked tool reads the same way whether
+   a student reaches it from the sidebar or from these Home dashboard
+   tiles — still clickable (the click is what surfaces the toast + pulse
+   via switchTool()'s guard), so no pointer-events:none here either. */
+.welcome-card.tile-locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.welcome-card.tile-locked:hover {
+  transform: none;
+  border-color: var(--panel-border);
+  box-shadow: none;
+}
 .welcome-card-icon {
   width: 44px;
   height: 44px;
@@ -1944,7 +1975,11 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
 
     <div class="sb-lbl">Navigation Suite</div>
     <div class="nav-menu">
-      <div class="nav-item active" id="nav-profile" onclick="switchTool('profile')">
+      <div class="nav-item active" id="nav-home" onclick="switchTool('home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="nav-item-label">Home</span>
+      </div>
+      <div class="nav-item" id="nav-profile" onclick="switchTool('profile')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span class="nav-item-label">Candidate Profile</span>
       </div>
@@ -2037,28 +2072,28 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
 
       <h3 style="font-weight:700; margin-bottom:12px;">Launch Suite Tools</h3>
       <div class="welcome-grid">
-        <div class="welcome-card" onclick="switchTool('strategy')">
+        <div class="welcome-card" id="home-tile-strategy" data-tool="strategy" onclick="switchTool('strategy')">
           <div class="welcome-card-icon">🎯</div>
           <div>
             <h4 style="font-weight:700; margin-bottom:4px;">Career Strategy &amp; SWOT</h4>
             <p style="font-size:12.5px; color:var(--text-secondary)">Outline targets, strengths, weaknesses, and custom value propositions.</p>
           </div>
         </div>
-        <div class="welcome-card" onclick="switchTool('star')">
+        <div class="welcome-card" id="home-tile-star" data-tool="star" onclick="switchTool('star')">
           <div class="welcome-card-icon">🌟</div>
           <div>
             <h4 style="font-weight:700; margin-bottom:4px;">STAR Builder</h4>
             <p style="font-size:12.5px; color:var(--text-secondary)">Compile structured STAR stories with automatic competency metrics.</p>
           </div>
         </div>
-        <div class="welcome-card" onclick="switchTool('tailor')">
+        <div class="welcome-card" id="home-tile-tailor" data-tool="tailor" onclick="switchTool('tailor')">
           <div class="welcome-card-icon">👔</div>
           <div>
             <h4 style="font-weight:700; margin-bottom:4px;">CV Tailor &amp; Letters</h4>
             <p style="font-size:12.5px; color:var(--text-secondary)">Optimize your resume summary, achievements, and cover letters to target JDs.</p>
           </div>
         </div>
-        <div class="welcome-card" onclick="switchTool('matrix')">
+        <div class="welcome-card" id="home-tile-matrix" data-tool="matrix" onclick="switchTool('matrix')">
           <div class="welcome-card-icon">📊</div>
           <div>
             <h4 style="font-weight:700; margin-bottom:4px;">Decision Matrix</h4>
@@ -2148,7 +2183,10 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
               <button class="btn-secondary" style="padding:6px 14px; font-size:12px;" onclick="triggerStudentCvReplace()">📤 Replace with edited version</button>
               <input type="file" id="student-cv-replace-file" accept=".pdf,.doc,.docx,.txt" style="display:none;" onchange="handleStudentCvReplaceFile(event)" />
             </div>
-            <button class="btn-action" style="padding:8px 20px; font-size:13px;" onclick="confirmStudentCvSummary()">✓ Confirm my CV</button>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-secondary" id="student-cv-edit-btn" style="padding:8px 20px; font-size:13px; display:none;" onclick="editStudentCvSummary()">✏️ Edit</button>
+              <button class="btn-action" id="student-cv-confirm-btn" style="padding:8px 20px; font-size:13px;" onclick="confirmStudentCvSummary()">✓ Confirm my CV</button>
+            </div>
           </div>
         </div>
       </div>
@@ -4124,6 +4162,8 @@ function goHome() {
   toggleMobileSidebar(false);
   activeTool = 'home';
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navHome = document.getElementById('nav-home');
+  if (navHome) navHome.classList.add('active');
   document.querySelectorAll('.panel-container').forEach(el => el.classList.remove('active'));
   document.getElementById('p-home').classList.add('active');
   renderHomeProfileCard();
@@ -4136,6 +4176,7 @@ function switchTool(tool) {
   // sidebar. Clicking shows why instead of silently doing nothing.
   if (isToolLockedForStudent(tool)) {
     showToast("Unlocks once your CV and Personal Statement are done — these help you plan your career forward.", 'info', 5000);
+    pulseLockedNavItem(tool);
     return;
   }
 
@@ -5338,13 +5379,16 @@ function updateProfileRequiredUI() {
     if (statementMain) statementMain.style.display = 'block';
     if (profileUpload) profileUpload.style.display = 'none';
 
-    // A student-sourced profile lands on the plain-English summary/confirm
-    // screen instead of the career-professional-styled baseline builder,
-    // until they explicitly confirm it. Every other tool (STAR, Tailor,
-    // Strategy, Personal Statement) stays unlocked regardless — this only
-    // swaps which view of the Candidate Profile panel itself is shown.
-    const needsStudentSummary = _gateUser.source === 'student' && !_gateUser.studentCvConfirmed;
-    if (needsStudentSummary) {
+    // A student-sourced profile ALWAYS lands on the plain-English
+    // summary/confirm screen instead of the career-professional-styled
+    // baseline builder — confirming does not switch them over to
+    // profile-main-content, it just flips profile-student-summary itself
+    // from its editable (unconfirmed) state to its read-only (confirmed)
+    // state. Every other tool (STAR, Tailor, Strategy, Personal Statement)
+    // stays unlocked regardless — this only decides which view of the
+    // Candidate Profile panel itself is shown. Non-student profiles are
+    // completely unaffected and always get profile-main-content.
+    if (_gateUser.source === 'student') {
       if (profileMain) profileMain.style.display = 'none';
       if (profileStudentSummary) profileStudentSummary.style.display = 'block';
       populateStudentCvSummaryUI(_gateUser);
@@ -5410,6 +5454,23 @@ function isToolLockedForStudent(tool) {
   return isStudentToolsLocked(user);
 }
 
+// Anchors the "still locked" feedback on the sidebar nav item itself (not
+// just the corner toast) — same target whether the click originated from
+// the sidebar or a Home dashboard tile, since every tool has exactly one
+// persistent nav item. Removed via setTimeout rather than an animationend
+// listener so a rapid repeat click can restart the effect cleanly.
+function pulseLockedNavItem(tool) {
+  const navItem = document.getElementById('nav-' + tool);
+  const tile = document.querySelector('.welcome-card[data-tool="' + tool + '"]');
+  [navItem, tile].forEach(el => {
+    if (!el) return;
+    el.classList.remove('nav-locked-shake');
+    void el.offsetWidth; // force reflow so re-adding the class restarts the animation
+    el.classList.add('nav-locked-shake');
+    setTimeout(() => el.classList.remove('nav-locked-shake'), 600);
+  });
+}
+
 // Reuses the same UNI_SECTION_MIN_CHARS threshold updateUniCounters() uses
 // for its per-section pass/fail — deliberately "at least one" here, unlike
 // isUniStatementExportReady()'s "all three, plus a 4000 total" gate, which
@@ -5429,6 +5490,8 @@ function updateStudentNavLockUI() {
   STUDENT_LOCKED_TOOLS.forEach(tool => {
     const el = document.getElementById('nav-' + tool);
     if (el) el.classList.toggle('nav-locked', locked);
+    const tile = document.querySelector('.welcome-card[data-tool="' + tool + '"]');
+    if (tile) tile.classList.toggle('tile-locked', locked);
   });
 
   if (locked) maybePromptStudentToolsUnlock(user);
@@ -7606,7 +7669,11 @@ function formatStudentCvSummary(cv) {
   const blocks = String(cv || '').trim().split(/\n\n+/);
   if (blocks.length === 0) return cv || '';
 
-  const name = blocks[0].trim();
+  // Strip any leading "#" markup before re-adding it fresh — this function
+  // must be idempotent, since (unlike before Part A) the confirmed summary
+  // view now re-renders through here on every profile/tool switch, not
+  // just once before confirming.
+  const name = blocks[0].trim().replace(/^#+\s*/, '');
   let out = `# ${name}\n\n`;
 
   for (let i = 1; i < blocks.length; i++) {
@@ -7627,12 +7694,54 @@ function formatStudentCvSummary(cv) {
 function populateStudentCvSummaryUI(user) {
   const textarea = document.getElementById('profile-student-summary-textarea');
   if (textarea) textarea.value = formatStudentCvSummary(user.cv);
+  // Every fresh render (profile switch, tool switch, page load) starts in
+  // the non-editing view — a confirmed CV shows read-only until the
+  // student explicitly clicks Edit again, matching a normal "view vs edit"
+  // pattern rather than always re-opening for editing.
+  _studentCvEditing = false;
+  updateStudentCvSummaryState(user);
+}
+
+// Purely visual: toggles the textarea's editability and which of the
+// Edit/Confirm buttons is shown, based on studentCvConfirmed (persisted)
+// and _studentCvEditing (in-memory-only "confirmed but currently editing"
+// override). Never touches user.cv or studentCvConfirmed itself.
+function updateStudentCvSummaryState(user) {
+  const textarea = document.getElementById('profile-student-summary-textarea');
+  const confirmBtn = document.getElementById('student-cv-confirm-btn');
+  const editBtn = document.getElementById('student-cv-edit-btn');
+  const isConfirmed = !!(user && user.studentCvConfirmed);
+  const editable = !isConfirmed || _studentCvEditing;
+
+  if (textarea) {
+    textarea.readOnly = !editable;
+    textarea.style.opacity = editable ? '1' : '0.8';
+    textarea.style.background = editable ? '' : 'rgba(0,0,0,0.15)';
+  }
+  if (confirmBtn) confirmBtn.style.display = editable ? 'inline-block' : 'none';
+  if (editBtn) editBtn.style.display = (isConfirmed && !_studentCvEditing) ? 'inline-block' : 'none';
+}
+
+// In-memory only — "confirmed CV, but the student clicked Edit and hasn't
+// re-confirmed yet." Resets to false on every populateStudentCvSummaryUI()
+// render (profile/tool switch, reload), so a confirmed CV always opens
+// read-only rather than remembering a stale edit-in-progress state.
+let _studentCvEditing = false;
+
+function editStudentCvSummary() {
+  _studentCvEditing = true;
+  const user = users.find(u => u.id === activeUserId);
+  updateStudentCvSummaryState(user);
+  const textarea = document.getElementById('profile-student-summary-textarea');
+  if (textarea) textarea.focus();
 }
 
 // Autosaves edits made on the summary screen straight to user.cv (matching
 // the app-wide "save on every input" pattern) — this does NOT set
-// studentCvConfirmed, so the summary screen keeps reappearing until the
-// student explicitly clicks Confirm.
+// studentCvConfirmed, so an unconfirmed CV keeps reappearing editable until
+// the student explicitly clicks Confirm. (Readonly mode blocks input
+// events for the already-confirmed case, so this only ever fires while
+// editable.)
 function saveStudentCvSummaryDraft(val) {
   const user = users.find(u => u.id === activeUserId);
   if (user) {
@@ -7641,6 +7750,11 @@ function saveStudentCvSummaryDraft(val) {
   }
 }
 
+// Confirming (whether for the first time, or re-confirming after Edit)
+// always sets studentCvConfirmed = true and re-renders via
+// updateProfileRequiredUI(), which resets _studentCvEditing to false —
+// so edit → confirm → edit → confirm is freely repeatable and never
+// un-sets studentCvConfirmed's role as the tools-unlock-eligibility gate.
 function confirmStudentCvSummary() {
   const user = users.find(u => u.id === activeUserId);
   if (!user) return;
@@ -8115,8 +8229,13 @@ function renderUniPreviousDraftNote() {
 
 function populateStatementUI(user) {
   if (!user.statement) {
+    // First time this profile has viewed this panel — no type has been
+    // explicitly chosen/saved yet, so pick the sensible default per
+    // profile source. Once user.statement exists (this default included),
+    // it's persisted and never overridden again, so a student who
+    // deliberately switches to Job Application keeps that choice.
     user.statement = {
-      type: 'job',
+      type: (user.source === 'student') ? 'university' : 'job',
       q1: '',
       q2: '',
       q3: '',
