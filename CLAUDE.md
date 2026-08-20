@@ -103,6 +103,34 @@ branch divergence rather than assuming `main` is static:
    genuinely good to adopt from the direct changes (fixes, improvements)
    separately from what needs reconciling with in-progress work.
 
+## Testing & verification for multi-step flows
+
+- **Test the full end-to-end journey, not just the change in isolation,
+  for anything touching a multi-step flow** (e.g. student CV builder →
+  submit → confirm → navigate away → navigate back → progressive unlock).
+  A fix that passes its own isolated test can still break the broader
+  journey: during the student-experience-polish round, the fix for the
+  permanent-redirect-after-confirm bug passed on its own, but broke on
+  re-render (a duplicated CV heading, `# # Name`) — a regression that only
+  surfaced once the full journey (confirm, navigate away, navigate back)
+  was re-run end-to-end, not when the redirect fix was tested alone.
+- **Live-AI verification must run against the actual deployed URL**, not
+  Mock mode and not a local dev server. This repo's Secure Proxy Worker
+  locks its CORS policy (`Access-Control-Allow-Origin`) to the production
+  `github.io` origin — testing from `localhost` fails the browser's CORS
+  preflight silently. `curl` cannot detect this (CORS is a browser-only
+  enforcement, invisible to a plain HTTP client), so a `curl -I` check
+  alone is not sufficient evidence that real AI calls will work; confirm
+  from the actual deployed page. Silently falling back to Mock mode when
+  a local test can't reach the real proxy defeats the point of a Live-AI
+  verification pass — the failure needs to be surfaced, not routed around.
+- **Avoid blocking native `alert()` for error states in async/AI-call
+  flows.** It freezes automated testing sessions in a way indistinguishable
+  from a crash (screenshots and JS eval calls start timing out with no
+  visible cause, and closing/reopening the tab is the only recovery), and
+  it's inconsistent with the toast-based error pattern (`showToast()`)
+  already used elsewhere in the app.
+
 ## Known environment quirks
 
 - The GitHub App integration can push and merge but **cannot delete
@@ -111,6 +139,19 @@ branch divergence rather than assuming `main` is static:
 - Commit signing may show as unverifiable in local hooks even when the
   actual signature is present and GitHub verifies it server-side after
   push — don't treat a local signing-check failure as blocking on its own.
+- **`gh` CLI is not reliably available in every Claude Code session or
+  environment.** If `gh pr create` fails (command not found, no auth
+  token), don't block on it — push the branch, then give Vijay the manual
+  PR creation link GitHub prints after a push
+  (`github.com/OWNER/REPO/pull/new/BRANCH-NAME`) along with a suggested
+  title and body to paste in.
+
+## Reporting output back to Vijay
+
+- **For long terminal output or a detailed multi-part report, write it to
+  a file (e.g. `report.md`) and hand over the path**, rather than pasting
+  large blocks directly into chat — long terminal pastes have repeatedly
+  arrived corrupted or truncated.
 
 ## When in doubt
 
