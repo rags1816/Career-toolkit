@@ -186,6 +186,18 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
   transform: scale(1.05);
 }
 
+/* Student-mode progressive unlock: greyed but still visible and still
+   clickable (the click itself is what surfaces the explanatory toast via
+   switchTool()'s guard) — so no pointer-events:none here. */
+.nav-item.nav-locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nav-item.nav-locked:hover {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
 .ulist-container {
   flex: 1;
   overflow-y: auto;
@@ -2117,6 +2129,30 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
         </div>
       </div>
 
+      <!-- STUDENT CV SUMMARY / CONFIRM SCREEN — default landing for a
+           student-sourced profile until they confirm it. Same underlying
+           user.cv data as profile-main-content's raw preview, just a
+           cleaner, student-appropriate presentation layer instead of the
+           career-professional-styled baseline documents. -->
+      <div id="profile-student-summary" style="display:none">
+        <div class="glass-card">
+          <div style="margin-bottom:12px;">
+            <h3 style="font-weight:700;">🎓 Your Student CV</h3>
+            <p style="font-size:12.5px; color:var(--text-secondary); margin-top:4px; max-width:640px;">Here's what you entered, laid out as a clean CV. Review and edit it below, then confirm to make it your working CV — it's what Personal Statement, CV Tailor, and every other tool will use.</p>
+          </div>
+          <textarea id="profile-student-summary-textarea" rows="22" style="font-size:13px; line-height:1.7; width:100%;" oninput="saveStudentCvSummaryDraft(this.value)"></textarea>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:14px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn-secondary" style="padding:6px 14px; font-size:12px;" onclick="downloadStudentCvSummaryWord()">⬇ Word</button>
+              <button class="btn-secondary" style="padding:6px 14px; font-size:12px;" onclick="downloadStudentCvSummaryPdf()">⬇ PDF</button>
+              <button class="btn-secondary" style="padding:6px 14px; font-size:12px;" onclick="triggerStudentCvReplace()">📤 Replace with edited version</button>
+              <input type="file" id="student-cv-replace-file" accept=".pdf,.doc,.docx,.txt" style="display:none;" onchange="handleStudentCvReplaceFile(event)" />
+            </div>
+            <button class="btn-action" style="padding:8px 20px; font-size:13px;" onclick="confirmStudentCvSummary()">✓ Confirm my CV</button>
+          </div>
+        </div>
+      </div>
+
       <div id="profile-main-content" style="display:none">
         <div class="tabs">
           <div class="tab active" id="tab-profile-preview" onclick="switchProfileTab('preview')">CV Preview &amp; Management</div>
@@ -4016,6 +4052,14 @@ window.onload = function() {
   const savedSettings = localStorage.getItem('cs_settings');
   if (savedSettings) {
     try { appSettings = JSON.parse(savedSettings); } catch(e) {}
+  } else {
+    // Nothing saved yet — persist the real default (proxy mode, with the
+    // proxy URL actually filled in) to localStorage right now, so "default"
+    // means genuinely saved rather than just held in memory until the user
+    // happens to open Settings. Only ever runs when no save exists yet —
+    // an existing saved appSettings is never touched by this branch.
+    appSettings.proxyUrl = DEFAULT_PROXY_URL;
+    localStorage.setItem('cs_settings', JSON.stringify(appSettings));
   }
   const savedUsers = localStorage.getItem('cs_users');
   if (savedUsers) {
@@ -4086,6 +4130,15 @@ function goHome() {
 }
 
 function switchTool(tool) {
+  // Single gateway for every nav entry point (sidebar items AND the Home
+  // dashboard's "Launch Suite Tools" tiles both call switchTool()) — gating
+  // here means a locked tool can't be reached from anywhere, not just the
+  // sidebar. Clicking shows why instead of silently doing nothing.
+  if (isToolLockedForStudent(tool)) {
+    showToast("Unlocks once your CV and Personal Statement are done — these help you plan your career forward.", 'info', 5000);
+    return;
+  }
+
   toggleMobileSidebar(false);
   activeTool = tool;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -5165,6 +5218,7 @@ function confirmDirectProfile(prefix) {
     if (confirmUpdate) {
       existingUser.cv = tempDirectCVText;
       existingUser.source = tempProfileSource;
+      existingUser.studentCvConfirmed = false; // any CV replace needs re-confirming on the student summary screen
       existingUser.baseline = { personalStatement: '', coverLetter: '', baselineSTAR: '' };
       existingUser.strategy = { goals: '', strengths: '', weaknesses: '', opportunities: '', threats: '', whyYouGeneral: '', whyYouSpecific: '', targetJD: '' };
       if (existingUser.tailored) delete existingUser.tailored;
@@ -5178,6 +5232,12 @@ function confirmDirectProfile(prefix) {
       autoFireAnalysisIfConfigured(existingUser.id);
       return;
     }
+    // Declined the update — abort rather than falling through to create a
+    // same-named duplicate profile below (this matched an existing user by
+    // name, so "no" means "don't touch anything," not "create another one").
+    tempDirectCVText = '';
+    tempProfileSource = 'upload';
+    return;
   }
 
   const newUser = {
@@ -5262,7 +5322,8 @@ function updateProfileRequiredUI() {
   const statementMain = document.getElementById('statement-main-content');
   const profileUpload = document.getElementById('profile-upload-zone');
   const profileMain = document.getElementById('profile-main-content');
-  
+  const profileStudentSummary = document.getElementById('profile-student-summary');
+
   const _gateUser = activeUserId ? users.find(u => u.id === activeUserId) : null;
   const _hasCV = _gateUser && _gateUser.cv && _gateUser.cv.trim().length > 10;
 
@@ -5276,7 +5337,21 @@ function updateProfileRequiredUI() {
     if (statementRequired) statementRequired.style.display = 'none';
     if (statementMain) statementMain.style.display = 'block';
     if (profileUpload) profileUpload.style.display = 'none';
-    if (profileMain) profileMain.style.display = 'block';
+
+    // A student-sourced profile lands on the plain-English summary/confirm
+    // screen instead of the career-professional-styled baseline builder,
+    // until they explicitly confirm it. Every other tool (STAR, Tailor,
+    // Strategy, Personal Statement) stays unlocked regardless — this only
+    // swaps which view of the Candidate Profile panel itself is shown.
+    const needsStudentSummary = _gateUser.source === 'student' && !_gateUser.studentCvConfirmed;
+    if (needsStudentSummary) {
+      if (profileMain) profileMain.style.display = 'none';
+      if (profileStudentSummary) profileStudentSummary.style.display = 'block';
+      populateStudentCvSummaryUI(_gateUser);
+    } else {
+      if (profileStudentSummary) profileStudentSummary.style.display = 'none';
+      if (profileMain) profileMain.style.display = 'block';
+    }
 
     const user = _gateUser;
     if (user) {
@@ -5300,10 +5375,87 @@ function updateProfileRequiredUI() {
     if (strategyMain) strategyMain.style.display = 'none';
     if (statementRequired) statementRequired.style.display = 'flex';
     if (statementMain) statementMain.style.display = 'none';
+    if (profileStudentSummary) profileStudentSummary.style.display = 'none';
     if (profileUpload) profileUpload.style.display = 'flex';
     if (profileMain) profileMain.style.display = 'none';
     showProfileEntryChoice();
   }
+
+  updateStudentNavLockUI();
+}
+
+/* ── STUDENT-MODE PROGRESSIVE NAV UNLOCK ──
+   For a student-sourced profile, Career Strategy / STAR / CV Tailor /
+   Decision Matrix / Interview Coach start greyed out (visible, not
+   hidden) until the student has a confirmed CV and at least one
+   University Personal Statement section past the 350-char minimum —
+   at which point they're offered (not silently given) the unlock.
+   Non-student profiles are entirely untouched by any of this. */
+const STUDENT_LOCKED_TOOLS = ['strategy', 'star', 'tailor', 'matrix', 'coach'];
+
+// In-memory only (not persisted) — caps the unlock offer to once per user
+// per page load, so it doesn't re-fire on every keystroke/navigation while
+// conditions are met but not yet confirmed. Resets on reload, matching
+// "doesn't re-prompt every load once unlocked" (i.e. it's fine to prompt
+// again on a fresh load right up until they actually unlock).
+let _studentUnlockPromptShownFor = new Set();
+
+function isStudentToolsLocked(user) {
+  return !!(user && user.source === 'student' && !user.toolsUnlocked);
+}
+
+function isToolLockedForStudent(tool) {
+  if (!STUDENT_LOCKED_TOOLS.includes(tool)) return false;
+  const user = activeUserId ? users.find(u => u.id === activeUserId) : null;
+  return isStudentToolsLocked(user);
+}
+
+// Reuses the same UNI_SECTION_MIN_CHARS threshold updateUniCounters() uses
+// for its per-section pass/fail — deliberately "at least one" here, unlike
+// isUniStatementExportReady()'s "all three, plus a 4000 total" gate, which
+// answers a different question (ready to export the full statement).
+function hasAnyUniSectionMet350(user) {
+  if (!user || !user.statement || !user.statement.uniSections) return false;
+  return ['s1', 's2', 's3'].some(key => {
+    const sec = user.statement.uniSections[key];
+    return sec && (sec.draft || '').length >= UNI_SECTION_MIN_CHARS;
+  });
+}
+
+function updateStudentNavLockUI() {
+  const user = activeUserId ? users.find(u => u.id === activeUserId) : null;
+  const locked = isStudentToolsLocked(user);
+
+  STUDENT_LOCKED_TOOLS.forEach(tool => {
+    const el = document.getElementById('nav-' + tool);
+    if (el) el.classList.toggle('nav-locked', locked);
+  });
+
+  if (locked) maybePromptStudentToolsUnlock(user);
+}
+
+function maybePromptStudentToolsUnlock(user) {
+  if (!user || user.toolsUnlocked) return;
+  if (!user.studentCvConfirmed) return;
+  if (!hasAnyUniSectionMet350(user)) return;
+  if (_studentUnlockPromptShownFor.has(user.id)) return;
+  _studentUnlockPromptShownFor.add(user.id);
+
+  showToast(
+    "Your CV and Personal Statement are ready. Want to unlock Career Strategy, STAR Builder, CV Tailor, Decision Matrix, and Interview Coach to keep planning your career forward?",
+    'success',
+    20000,
+    { label: '✓ Yes, unlock tools', onClick: () => unlockStudentTools(user.id) }
+  );
+}
+
+function unlockStudentTools(userId) {
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
+  user.toolsUnlocked = true;
+  saveUsersToStorage();
+  updateStudentNavLockUI();
+  showToast('Unlocked! Career Strategy, STAR Builder, CV Tailor, Decision Matrix, and Interview Coach are now available.', 'success');
 }
 
 function showProfileEntryChoice() {
@@ -7395,6 +7547,22 @@ async function generateAiAssistDraft() {
   }
 }
 
+// Shared by buildStudentStarterCV() (compiling the raw user.cv text) and
+// formatStudentCvSummary() (recognizing those same labels to re-render the
+// compiled text with proper headings on the summary/confirm screen).
+const STUDENT_CV_SECTIONS = [
+  { id: 'scv-basics', label: 'Profile' },
+  { id: 'scv-subjects', label: 'Education — Subjects & Grades' },
+  { id: 'scv-responsibility', label: 'Positions of Responsibility' },
+  { id: 'scv-extracurricular', label: 'Extracurricular Activities & Clubs' },
+  { id: 'scv-volunteering', label: 'Volunteering & Community Involvement' },
+  { id: 'scv-work', label: 'Work-Adjacent Experience' },
+  { id: 'scv-projects', label: 'Independent Projects & Super-Curricular Learning' },
+  { id: 'scv-achievements', label: 'Achievements & Awards' },
+  { id: 'scv-skills', label: 'Skills' },
+  { id: 'scv-interests', label: 'Interests Relevant to Intended Course/Field' }
+];
+
 function buildStudentStarterCV() {
   const name = document.getElementById('scv-name').value.trim();
   if (!name) {
@@ -7402,22 +7570,9 @@ function buildStudentStarterCV() {
     return;
   }
 
-  const sections = [
-    { id: 'scv-basics', label: 'Profile' },
-    { id: 'scv-subjects', label: 'Education — Subjects & Grades' },
-    { id: 'scv-responsibility', label: 'Positions of Responsibility' },
-    { id: 'scv-extracurricular', label: 'Extracurricular Activities & Clubs' },
-    { id: 'scv-volunteering', label: 'Volunteering & Community Involvement' },
-    { id: 'scv-work', label: 'Work-Adjacent Experience' },
-    { id: 'scv-projects', label: 'Independent Projects & Super-Curricular Learning' },
-    { id: 'scv-achievements', label: 'Achievements & Awards' },
-    { id: 'scv-skills', label: 'Skills' },
-    { id: 'scv-interests', label: 'Interests Relevant to Intended Course/Field' }
-  ];
-
   let filledCount = 0;
   let cvText = `${name}\n`;
-  sections.forEach(s => {
+  STUDENT_CV_SECTIONS.forEach(s => {
     const val = (document.getElementById(s.id).value || '').trim();
     if (val) {
       filledCount++;
@@ -7437,6 +7592,130 @@ function buildStudentStarterCV() {
   document.getElementById('direct-profile-name').value = name;
   closeStudentCVModal();
   confirmDirectProfile('profile');
+}
+
+/* ── STUDENT CV SUMMARY / CONFIRM SCREEN ──
+   Reformats the raw user.cv text (which, right after buildStudentStarterCV,
+   is exactly "Name\n\nLabel\nContent\n\n...") into a version with proper
+   markdown headings for display. Falls back gracefully for text that
+   doesn't match a known label (e.g. after the student re-uploads an
+   externally-edited version) by keeping that content, just without a
+   recognized heading — it degrades, it doesn't lose anything. */
+function formatStudentCvSummary(cv) {
+  const labels = STUDENT_CV_SECTIONS.map(s => s.label);
+  const blocks = String(cv || '').trim().split(/\n\n+/);
+  if (blocks.length === 0) return cv || '';
+
+  const name = blocks[0].trim();
+  let out = `# ${name}\n\n`;
+
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const lines = block.split('\n');
+    const firstLine = lines[0].trim();
+    if (labels.includes(firstLine)) {
+      const content = lines.slice(1).join('\n').trim();
+      out += `## ${firstLine}\n${content}\n\n`;
+    } else {
+      out += `${block.trim()}\n\n`;
+    }
+  }
+
+  return out.trim();
+}
+
+function populateStudentCvSummaryUI(user) {
+  const textarea = document.getElementById('profile-student-summary-textarea');
+  if (textarea) textarea.value = formatStudentCvSummary(user.cv);
+}
+
+// Autosaves edits made on the summary screen straight to user.cv (matching
+// the app-wide "save on every input" pattern) — this does NOT set
+// studentCvConfirmed, so the summary screen keeps reappearing until the
+// student explicitly clicks Confirm.
+function saveStudentCvSummaryDraft(val) {
+  const user = users.find(u => u.id === activeUserId);
+  if (user) {
+    user.cv = val;
+    saveUsersToStorage();
+  }
+}
+
+function confirmStudentCvSummary() {
+  const user = users.find(u => u.id === activeUserId);
+  if (!user) return;
+  const textarea = document.getElementById('profile-student-summary-textarea');
+  if (textarea) user.cv = textarea.value;
+  user.studentCvConfirmed = true;
+  saveUsersToStorage();
+  updateProfileRequiredUI();
+  renderHomeProfileCard();
+  showToast('Your CV is confirmed and ready to use.', 'success');
+}
+
+function downloadStudentCvSummaryWord() {
+  const user = users.find(u => u.id === activeUserId);
+  const text = document.getElementById('profile-student-summary-textarea').value;
+  if (!text) {
+    alert("No CV content to download.");
+    return;
+  }
+  downloadAsWordDoc(`${user ? user.name : 'Candidate'} — Curriculum Vitae`, text, `${user ? user.name.replace(/\s+/g, '_') : 'Candidate'}_Student_CV`);
+}
+
+function downloadStudentCvSummaryPdf() {
+  const user = users.find(u => u.id === activeUserId);
+  const text = document.getElementById('profile-student-summary-textarea').value;
+  if (!text) {
+    alert("No CV content to download.");
+    return;
+  }
+  downloadAsPdf(`${user ? user.name : 'Candidate'} — Curriculum Vitae`, text, `${user ? user.name.replace(/\s+/g, '_') : 'Candidate'}_Student_CV`);
+}
+
+function triggerStudentCvReplace() {
+  document.getElementById('student-cv-replace-file').click();
+}
+
+// Re-upload flow for "📤 Replace with edited version" — reuses the same
+// extraction functions as the main CV upload pipeline, then hands off to
+// confirmDirectProfile()'s existing "profile already exists → update"
+// path (matching by the current user's own name) rather than building a
+// second upload/creation mechanism.
+async function handleStudentCvReplaceFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const user = users.find(u => u.id === activeUserId);
+  if (!user) { e.target.value = ''; return; }
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['pdf', 'doc', 'docx', 'txt'].includes(ext)) {
+    alert('Invalid format. Please upload PDF, Word (.docx/.doc), or TXT.');
+    e.target.value = '';
+    return;
+  }
+
+  try {
+    let text = '';
+    if (ext === 'pdf') text = await extractPDF(file);
+    else if (ext === 'docx' || ext === 'doc') text = await extractDOCX(file);
+    else text = await readTxt(file);
+
+    text = text.trim();
+    if (text.length < 30) {
+      alert('Could not extract sufficient text from this file. Try a direct PDF or text file.');
+      return;
+    }
+
+    tempDirectCVText = text;
+    tempProfileSource = 'student'; // keep student-mode nav/unlock logic — don't flip to 'upload'
+    document.getElementById('direct-profile-name').value = user.name;
+    confirmDirectProfile('profile');
+  } catch (err) {
+    alert('Extraction Error: ' + err.message);
+  } finally {
+    e.target.value = '';
+  }
 }
 
 function handleDrop(e) {
@@ -8120,6 +8399,12 @@ function updateUniCounters() {
       ? 'All sections meet the minimum length and the combined total is within budget — Copy and Download are unlocked.'
       : 'Each section needs 350+ characters and the combined total must stay at or under 4000 before you can copy or download.';
   }
+
+  // A section crossing the 350-char line here is one of the two student
+  // tools-unlock conditions (see updateStudentNavLockUI) — recheck on
+  // every recount rather than only on navigation, so the unlock offer can
+  // appear the moment it's earned, not just on the next page switch.
+  updateStudentNavLockUI();
 }
 
 function isUniStatementExportReady() {
@@ -8594,6 +8879,10 @@ function toggleSTT() {
   }
 }
 
+// Routes the green/red decision entirely through isApiConfigured() — the
+// same gate autoFireAnalysisIfConfigured() and every AI-call path use —
+// so the status dot can never show "ready" while a real call would fail,
+// or vice versa. Only the label text branches further by mode.
 function updateApiStatusDot() {
   const dot = document.getElementById('api-status-dot');
   const txt = document.getElementById('api-status-text');
@@ -8602,14 +8891,12 @@ function updateApiStatusDot() {
     dot.style.background = '#fbbf24';
     txt.style.color = '#fbbf24';
     txt.textContent = 'Demo mode';
-  } else if (appSettings.apiMode === 'proxy' && appSettings.proxyUrl) {
+  } else if (isApiConfigured()) {
     dot.style.background = '#34d399';
     txt.style.color = '#34d399';
-    txt.textContent = 'AI Ready · Proxy';
-  } else if (appSettings.apiKey && appSettings.apiKey.length > 8) {
-    dot.style.background = '#34d399';
-    txt.style.color = '#34d399';
-    txt.textContent = appSettings.apiMode === 'anthropic' ? 'Claude ready' : 'Gemini ready';
+    txt.textContent = appSettings.apiMode === 'proxy'
+      ? 'AI Ready · Proxy'
+      : (appSettings.apiMode === 'anthropic' ? 'Claude ready' : 'Gemini ready');
   } else {
     dot.style.background = '#f87171';
     txt.style.color = '#f87171';
