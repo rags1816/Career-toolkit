@@ -9,6 +9,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## v3.0 — 2026-08-25
+
+Third major iteration milestone. Documentation/labeling checkpoint tagging
+the app as v3.0 (git tag `v3.0`, alongside the existing
+`v-student-experience-2026-08` tag) ahead of a new round of family testing
+(Anil, daughter, and others). No functional changes beyond an in-app "v3.0"
+version label next to the sidebar branding.
+
+### Added
+- "v3.0" version label in the sidebar, next to the Career Suite / AI Toolkit branding.
+- PBMG / PROD / INOV glossary and a short "why evidence-based frameworks matter" note in `METHODOLOGY.md`.
+
+---
+
 ## 2026-08-20
 
 ### Added

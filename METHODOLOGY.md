@@ -29,6 +29,26 @@ acknowledgment of genuine gaps rather than overclaiming.
     that can be matched against different criteria sets across multiple
     applications, rather than rewritten from scratch each time
 
+## Framework tag glossary: PBMG / PROD / INOV
+
+These tags are the criterion categories the evidence bank matches career
+evidence against (see "Core framework" below):
+
+- **PBMG** — People Management or Portfolio/Programme Management: leading
+  teams, resource allocation, stakeholder engagement, or delivering a
+  portfolio of work
+- **PROD** — Product Management: product lifecycle, user research,
+  roadmapping, and translating business strategy into deliverables
+- **INOV** — Innovation or Innovation Management: creative problem-solving,
+  continuous improvement, experimentation, and adopting new technologies or
+  processes
+
+### Why evidence-based frameworks matter
+
+These replace vague claims ("I am a good leader") with proof mapped to a
+specific criterion, enabling structured, objective scoring — often combined
+with the STAR (Situation, Task, Action, Result) method.
+
 ## Core framework (your original model)
 
 The toolkit organises career evidence into a structured bank, tagged by the
