@@ -50,6 +50,8 @@ without requiring each user to manage their own AI API key.
 Live — actively used for real job applications and shared with family
 members for their own CV/application work.
 
+Current version: v3.0
+
 ## Tech stack
 
 Single `index.html` front end. AI features are proxied through a Cloudflare
