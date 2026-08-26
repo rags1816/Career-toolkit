@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Career Suite - AI Toolkit</title>
+<script>
+(function() {
+  try {
+    if (localStorage.getItem('cs_theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  } catch (e) {}
+})();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -42,6 +51,39 @@
   --danger-border: rgba(248, 113, 113, 0.25);
   
   --sidebar-w: 260px;
+  --sidebar-bg: rgba(10, 12, 26, 0.85);
+  --modal-bg: rgba(18, 22, 41, 0.95);
+}
+
+[data-theme="light"] {
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --modal-bg: rgba(255, 255, 255, 0.97);
+  --bg-dark: #f3f4f8;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #eceefb 0%, #f3f4f8 70%);
+  --panel-bg: rgba(255, 255, 255, 0.85);
+  --panel-border: rgba(15, 23, 42, 0.10);
+  --panel-border-glow: rgba(99, 102, 241, 0.18);
+
+  --primary: #6366f1;
+  --primary-glow: rgba(99, 102, 241, 0.25);
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --secondary-gradient: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+
+  --text-primary: #1a1d29;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+
+  --success: #059669;
+  --success-bg: rgba(5, 150, 105, 0.08);
+  --success-border: rgba(5, 150, 105, 0.28);
+
+  --warning: #b45309;
+  --warning-bg: rgba(180, 83, 9, 0.08);
+  --warning-border: rgba(180, 83, 9, 0.28);
+
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --danger-border: rgba(220, 38, 38, 0.28);
 }
 
 body {
@@ -87,7 +129,7 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
 .sb {
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: rgba(10, 12, 26, 0.85);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--panel-border);
   display: flex;
   flex-direction: column;
@@ -134,6 +176,24 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
   color: var(--text-muted);
 }
 
+.theme-toggle-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-left: 1px;
+}
+
+.theme-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
 .sb-lbl {
   padding: 18px 20px 6px;
   font-size: 10px;
@@ -170,7 +230,7 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
 .nav-item.active {
   background: rgba(99, 102, 241, 0.15);
   border-color: rgba(99, 102, 241, 0.3);
-  color: #fff;
+  color: var(--text-primary);
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
 }
 
@@ -375,7 +435,7 @@ h1, h2, h3, h4, .app-name, .nav-item-label, .btn-action {
 .panel-title {
   font-size: 24px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   letter-spacing: -0.5px;
   margin-bottom: 6px;
 }
@@ -475,7 +535,7 @@ input[type=text], input[type=password], textarea, select {
   font-size: 13.5px;
   font-family: inherit;
   background: rgba(255, 255, 255, 0.03);
-  color: #fff;
+  color: var(--text-primary);
   line-height: 1.5;
   transition: all 0.2s;
 }
@@ -489,7 +549,7 @@ input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus
 
 select option {
   background: var(--bg-dark, #1a1a2e);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 textarea {
@@ -607,7 +667,7 @@ textarea {
 .obox h3 {
   margin-top: 20px;
   margin-bottom: 8px;
-  color: #fff;
+  color: var(--text-primary);
   border-bottom: 1px solid var(--panel-border);
   padding-bottom: 4px;
 }
@@ -696,7 +756,7 @@ textarea {
   background: rgba(255, 255, 255, 0.04);
   padding: 14px 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   border-bottom: 1px solid var(--panel-border);
 }
 
@@ -712,7 +772,7 @@ textarea {
 
 .matrix-table tr.winner td {
   background: rgba(52, 211, 153, 0.05);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .matrix-table tr.winner {
@@ -731,7 +791,7 @@ textarea {
   border-radius: 12px;
   border: 1px solid var(--success-border);
   background: var(--success-bg);
-  color: #fff;
+  color: var(--text-primary);
   margin-top: 20px;
   display: flex;
   flex-direction: column;
@@ -845,7 +905,7 @@ textarea {
   border-radius: 12px;
   padding: 16px;
   margin: 10px 0;
-  color: #fff;
+  color: var(--text-primary);
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -909,7 +969,7 @@ textarea {
 .record-btn:hover {
   background: rgba(99, 102, 241, 0.25);
   border-color: rgba(99, 102, 241, 0.6);
-  color: #fff;
+  color: var(--text-primary);
   transform: scale(1.05);
 }
 
@@ -993,8 +1053,8 @@ textarea {
 }
 
 .mbox {
-  background: rgba(18, 22, 41, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--modal-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 20px;
   padding: 30px;
   width: 520px;
@@ -1014,7 +1074,7 @@ textarea {
 .mtitle {
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 6px;
 }
 
@@ -1081,7 +1141,7 @@ textarea {
   background: var(--warning-bg);
   border: 1px solid var(--warning-border);
   font-size: 13px;
-  color: #fff;
+  color: var(--text-primary);
   margin-top: 12px;
 }
 
@@ -1107,7 +1167,7 @@ textarea {
 .fp-name {
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   flex: 1;
 }
 
@@ -1133,6 +1193,33 @@ textarea {
 
 .cv-snippet.show {
   display: block;
+}
+
+.doc-fallback {
+  display: none;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.doc-fallback.show {
+  display: block;
+}
+
+.doc-fallback p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
+.doc-fallback textarea {
+  width: 100%;
+  min-height: 90px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
 }
 
 /* API Setup / Model Info */
@@ -1521,7 +1608,7 @@ textarea {
   pointer-events: auto;
   padding: 12px 16px;
   border-radius: 12px;
-  background: rgba(18, 22, 41, 0.95);
+  background: var(--modal-bg);
   border: 1px solid var(--panel-border-glow);
   color: var(--text-primary);
   font-size: 13px;
@@ -1535,7 +1622,7 @@ textarea {
   white-space: pre-wrap;
   word-break: break-word;
 }
-.toast.error { border-color: var(--danger-border); background: rgba(50, 20, 26, 0.95); }
+.toast.error { border-color: var(--danger-border); background: rgba(50, 20, 26, 0.95); color: #fff; }
 .toast.success { border-color: var(--success-border); }
 .toast .toast-x { cursor: pointer; opacity: 0.6; font-size: 14px; flex-shrink: 0; margin-left: auto; }
 .toast .toast-x:hover { opacity: 1; }
@@ -1579,7 +1666,7 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
   max-width: calc(100vw - 32px);
   height: 460px;
   max-height: calc(100vh - 120px);
-  background: rgba(18, 22, 41, 0.97);
+  background: var(--modal-bg);
   border: 1px solid var(--panel-border);
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.55);
@@ -1635,7 +1722,7 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
   border-radius: 8px;
   border: 1px solid var(--panel-border);
   background: rgba(255,255,255,0.03);
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
 }
 .rg-input-bar button {
@@ -1693,9 +1780,14 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
             <div class="fp-name" id="m-fname" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
             <div class="fp-size" id="m-fsize"></div>
           </div>
-          <button type="button" onclick="clearFile()" style="border:none;background:none;cursor:pointer;font-size:16px;color:#fff">✕</button>
+          <button type="button" onclick="clearFile()" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--text-primary)">✕</button>
         </div>
         <div class="cv-snippet" id="m-snippet"></div>
+        <div class="doc-fallback" id="m-doc-fallback">
+          <p>This looks like an older Word format (.doc). You can: (a) open it in Word and "Save As" .docx, or (b) paste your CV text directly below.</p>
+          <textarea id="m-doc-paste" placeholder="Paste your CV text here..."></textarea>
+          <button type="button" class="btn-action" onclick="useDocPasteFallback()">Use this text</button>
+        </div>
       </div>
       <div class="field">
         <label class="fl">Candidate Name <span class="fh">auto-detected — edit if needed</span></label>
@@ -1965,10 +2057,14 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
       </div>
       <div style="flex:1">
         <div class="app-name">Career Suite</div>
-        <div class="app-sub" style="display:flex;align-items:center;gap:5px;">
-          AI Toolkit
+        <div class="app-sub" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;row-gap:4px;">
+          <span>AI Toolkit</span>
           <span style="font-size:9px;color:var(--text-muted);opacity:0.65;">&middot; v3.0</span>
-          <span id="api-status-dot" title="Click Settings to configure API key" onclick="event.stopPropagation();openSettingsModal()" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f87171;cursor:pointer;margin-left:2px;flex-shrink:0;" aria-label="API status"></span>
+          <button type="button" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle light/dark theme" aria-label="Toggle light/dark theme" onclick="event.stopPropagation();toggleTheme()">
+            <svg id="theme-toggle-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+          </button>
+          <span style="flex-basis:100%;height:0;"></span>
+          <span id="api-status-dot" title="Click Settings to configure API key" onclick="event.stopPropagation();openSettingsModal()" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f87171;cursor:pointer;flex-shrink:0;" aria-label="API status"></span>
           <span id="api-status-text" style="font-size:10px;color:#f87171;cursor:pointer;" onclick="event.stopPropagation();openSettingsModal()">No key</span>
         </div>
       </div>
@@ -2113,7 +2209,7 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
       </div>
 
       <!-- Data Persistence Alert -->
-      <div class="recommendation-alert" style="margin-top: 10px; margin-bottom: 24px; border-color: var(--warning-border); background: var(--warning-bg); color: #fff;">
+      <div class="recommendation-alert" style="margin-top: 10px; margin-bottom: 24px; border-color: var(--warning-border); background: var(--warning-bg); color: var(--text-primary);">
         <div class="recommendation-title" style="color: var(--warning); font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
           <span>⚠️</span> History Data Alert: Local Cache Storage
         </div>
@@ -2155,6 +2251,12 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
             <div class="dz-sub">PDF, Word, or plain text</div>
           </div>
 
+          <div class="doc-fallback" id="direct-profile-doc-fallback" style="max-width: 450px; margin: 0 auto 16px;">
+            <p>This looks like an older Word format (.doc). You can: (a) open it in Word and "Save As" .docx, or (b) paste your CV text directly below.</p>
+            <textarea id="direct-profile-doc-paste" placeholder="Paste your CV text here..."></textarea>
+            <button type="button" class="btn-action" onclick="useDirectDocPasteFallback('profile')">Use this text</button>
+          </div>
+
           <div id="direct-profile-confirm" style="display:none; max-width: 450px; margin: 16px auto; text-align: left;" class="glass-card">
             <div class="field">
               <label class="fl">Guessed Candidate Name <span class="fh">(Edit if needed)</span></label>
@@ -2189,6 +2291,11 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
               <button class="btn-action" id="student-cv-confirm-btn" style="padding:8px 20px; font-size:13px;" onclick="confirmStudentCvSummary()">✓ Confirm my CV</button>
             </div>
           </div>
+          <div class="doc-fallback" id="student-cv-replace-doc-fallback">
+            <p>This looks like an older Word format (.doc). You can: (a) open it in Word and "Save As" .docx, or (b) paste your CV text directly below.</p>
+            <textarea id="student-cv-replace-doc-paste" placeholder="Paste your CV text here..."></textarea>
+            <button type="button" class="btn-action" onclick="useStudentCvReplaceDocPasteFallback()">Use this text</button>
+          </div>
         </div>
       </div>
 
@@ -2206,10 +2313,15 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
             </div>
             <div class="field">
               <label class="fl">Replace CV Document</label>
-              <div class="dropzone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleReplaceDrop(event)">
-                <input type="file" accept=".pdf,.doc,.docx,.txt" onchange="handleReplaceFile(event)" />
+              <div class="dropzone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleReplaceDrop(event, 'profile')">
+                <input type="file" accept=".pdf,.doc,.docx,.txt" onchange="handleReplaceFile(event, 'profile')" />
                 <div class="dz-icon">📄</div>
                 <div class="dz-title">Drop replacement file here</div>
+              </div>
+              <div class="doc-fallback" id="replace-cv-doc-fallback-profile">
+                <p>This looks like an older Word format (.doc). You can: (a) open it in Word and "Save As" .docx, or (b) paste your CV text directly below.</p>
+                <textarea id="replace-cv-doc-paste-profile" placeholder="Paste your CV text here..."></textarea>
+                <button type="button" class="btn-action" onclick="useReplaceDocPasteFallback('profile')">Use this text</button>
               </div>
             </div>
             <div class="olbl">Extracted Text Preview</div>
@@ -2260,7 +2372,7 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
 
       <div id="strategy-main-content" style="display:none">
         <!-- Strategy Sync Notice Banner -->
-        <div class="recommendation-alert" id="strategy-sync-notice" style="display:none; margin-bottom: 24px; border-color: var(--warning-border); background: var(--warning-bg); color: #fff;">
+        <div class="recommendation-alert" id="strategy-sync-notice" style="display:none; margin-bottom: 24px; border-color: var(--warning-border); background: var(--warning-bg); color: var(--text-primary);">
           <div class="recommendation-title" style="color: var(--warning);">
             <span>⚠️</span> Strategy Out of Sync
           </div>
@@ -2456,10 +2568,15 @@ body:has(#pinsetupmodal.open) #ref-guide-fab {
         <div id="panel-star-cv" style="display:none">
           <div class="field">
             <label class="fl">Replace Current CV</label>
-            <div class="dropzone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleReplaceDrop(event)">
-              <input type="file" accept=".pdf,.doc,.docx,.txt" onchange="handleReplaceFile(event)" />
+            <div class="dropzone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleReplaceDrop(event, 'star')">
+              <input type="file" accept=".pdf,.doc,.docx,.txt" onchange="handleReplaceFile(event, 'star')" />
               <div class="dz-icon">📄</div>
               <div class="dz-title">Upload a replacement CV</div>
+            </div>
+            <div class="doc-fallback" id="replace-cv-doc-fallback-star">
+              <p>This looks like an older Word format (.doc). You can: (a) open it in Word and "Save As" .docx, or (b) paste your CV text directly below.</p>
+              <textarea id="replace-cv-doc-paste-star" placeholder="Paste your CV text here..."></textarea>
+              <button type="button" class="btn-action" onclick="useReplaceDocPasteFallback('star')">Use this text</button>
             </div>
           </div>
           <div class="olbl">Extracted Text Content</div>
@@ -4145,6 +4262,33 @@ window.onload = function() {
 };
 
 /* ── MOBILE SIDEBAR CONTROL ── */
+/* ── Light/Dark theme toggle ── */
+const THEME_ICON_PATHS = {
+  dark: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+  light: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+};
+
+function getTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+}
+
+function applyThemeIcon() {
+  const icon = document.getElementById('theme-toggle-icon');
+  if (!icon) return;
+  icon.innerHTML = getTheme() === 'light' ? THEME_ICON_PATHS.light : THEME_ICON_PATHS.dark;
+}
+
+function toggleTheme() {
+  const next = getTheme() === 'light' ? 'dark' : 'light';
+  if (next === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  try { localStorage.setItem('cs_theme', next); } catch (e) {}
+  applyThemeIcon();
+}
+
 function toggleMobileSidebar(open) {
   const sb = document.querySelector('.sb');
   const overlay = document.getElementById('sidebar-overlay');
@@ -4229,7 +4373,7 @@ function renderHomeProfileCard() {
     <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap">
       <div class="uav" style="width:64px; height:64px; font-size:20px; font-weight:700; background:var(--primary-gradient); box-shadow:0 4px 15px var(--primary-glow); border-color:transparent;">${initials}</div>
       <div style="flex:1">
-        <h3 style="font-weight:700; font-size:18px; color:#fff">${user.name}</h3>
+        <h3 style="font-weight:700; font-size:18px; color:var(--text-primary)">${user.name}</h3>
         <p style="font-size:13px; color:var(--text-secondary)">CV Loaded — ${wc.toLocaleString()} words</p>
         <p style="font-size:13px; color:var(--primary); font-weight:500; margin-top:4px;">Goals: ${user.strategy?.goals || 'Strategy not generated yet'}</p>
       </div>
@@ -7810,6 +7954,9 @@ async function handleStudentCvReplaceFile(e) {
     return;
   }
 
+  const docFallback = document.getElementById('student-cv-replace-doc-fallback');
+  docFallback.classList.remove('show');
+
   try {
     let text = '';
     if (ext === 'pdf') text = await extractPDF(file);
@@ -7822,15 +7969,40 @@ async function handleStudentCvReplaceFile(e) {
       return;
     }
 
-    tempDirectCVText = text;
-    tempProfileSource = 'student'; // keep student-mode nav/unlock logic — don't flip to 'upload'
-    document.getElementById('direct-profile-name').value = user.name;
-    confirmDirectProfile('profile');
+    applyStudentCvReplaceText(text, user);
   } catch (err) {
-    alert('Extraction Error: ' + err.message);
+    if (err.isLegacyDoc) {
+      docFallback.classList.add('show');
+      document.getElementById('student-cv-replace-doc-paste').focus();
+    } else {
+      alert('Extraction Error: ' + err.message);
+    }
   } finally {
     e.target.value = '';
   }
+}
+
+// Shared by a successful file extraction and the .doc paste fallback, so both
+// hand off to confirmDirectProfile()'s existing "profile already exists →
+// update" path identically.
+function applyStudentCvReplaceText(text, user) {
+  tempDirectCVText = text;
+  tempProfileSource = 'student'; // keep student-mode nav/unlock logic — don't flip to 'upload'
+  document.getElementById('direct-profile-name').value = user.name;
+  confirmDirectProfile('profile');
+}
+
+function useStudentCvReplaceDocPasteFallback() {
+  const user = users.find(u => u.id === activeUserId);
+  if (!user) return;
+  const pasteArea = document.getElementById('student-cv-replace-doc-paste');
+  const text = pasteArea.value.trim();
+  if (text.length < 30) {
+    alert('Please paste more of your CV text before continuing (at least a few lines).');
+    return;
+  }
+  document.getElementById('student-cv-replace-doc-fallback').classList.remove('show');
+  applyStudentCvReplaceText(text, user);
 }
 
 function handleDrop(e) {
@@ -7849,12 +8021,13 @@ async function processFile(file) {
     alert('Invalid format. Please upload PDF, Word (.docx/.doc), or TXT.');
     return;
   }
-  
+
   document.getElementById('m-proc').classList.add('show');
   document.getElementById('m-prev').classList.remove('show');
   document.getElementById('m-snippet').classList.remove('show');
+  document.getElementById('m-doc-fallback').classList.remove('show');
   uploadedCVText = '';
-  
+
   try {
     let text = '';
     if (ext === 'pdf') {
@@ -7864,33 +8037,54 @@ async function processFile(file) {
     } else {
       text = await readTxt(file);
     }
-    
+
     text = text.trim();
     if (text.length < 30) {
       alert('Could not extract sufficient text from this file. Try a direct PDF or text file.');
       document.getElementById('m-proc').classList.remove('show');
       return;
     }
-    
-    uploadedCVText = text;
+
     document.getElementById('m-proc').classList.remove('show');
-    
-    const words = text.split(/\s+/).length;
-    document.getElementById('m-fname').textContent = file.name;
-    document.getElementById('m-fsize').textContent = (file.size / 1024).toFixed(0) + ' KB · ' + words.toLocaleString() + ' words';
-    document.getElementById('m-prev').classList.add('show');
-    
-    document.getElementById('m-snippet').textContent = text.slice(0, 400) + (text.length > 400 ? '...' : '');
-    document.getElementById('m-snippet').classList.add('show');
-    
-    const detectedName = guessCandidateName(text);
-    document.getElementById('m-name').value = detectedName || 'New Candidate';
-    document.getElementById('m-name').focus();
-    
+    applyExtractedCVText(text, file.name, (file.size / 1024).toFixed(0) + ' KB');
+
   } catch (err) {
     document.getElementById('m-proc').classList.remove('show');
-    alert('Extraction Error: ' + err.message);
+    if (err.isLegacyDoc) {
+      document.getElementById('m-doc-fallback').classList.add('show');
+      document.getElementById('m-doc-paste').focus();
+    } else {
+      alert('Extraction Error: ' + err.message);
+    }
   }
+}
+
+// Shared by a successful file extraction and the .doc paste fallback, so both
+// produce an identical preview/name-detection flow from this point on.
+function applyExtractedCVText(text, sourceLabel, sizeLabel) {
+  uploadedCVText = text;
+
+  const words = text.split(/\s+/).length;
+  document.getElementById('m-fname').textContent = sourceLabel;
+  document.getElementById('m-fsize').textContent = sizeLabel + ' · ' + words.toLocaleString() + ' words';
+  document.getElementById('m-prev').classList.add('show');
+
+  document.getElementById('m-snippet').textContent = text.slice(0, 400) + (text.length > 400 ? '...' : '');
+  document.getElementById('m-snippet').classList.add('show');
+
+  const detectedName = guessCandidateName(text);
+  document.getElementById('m-name').value = detectedName || 'New Candidate';
+  document.getElementById('m-name').focus();
+}
+
+function useDocPasteFallback() {
+  const text = document.getElementById('m-doc-paste').value.trim();
+  if (text.length < 30) {
+    alert('Please paste more of your CV text before continuing (at least a few lines).');
+    return;
+  }
+  document.getElementById('m-doc-fallback').classList.remove('show');
+  applyExtractedCVText(text, 'Pasted CV text', text.length.toLocaleString() + ' chars');
 }
 
 async function extractPDF(file) {
@@ -7927,7 +8121,9 @@ async function extractDOCX(file) {
   // Legacy binary .doc files (OLE/CFB format) start with D0 CF 11 E0.
   // Modern .docx files are zip archives and start with PK (50 4B).
   if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0) {
-    throw new Error("This looks like an older Word format (.doc). Please open it in Word and 'Save As' .docx, or upload as PDF/TXT instead.");
+    const err = new Error("This looks like an older Word format (.doc). Please open it in Word and 'Save As' .docx, or paste your CV text directly.");
+    err.isLegacyDoc = true;
+    throw err;
   }
   const r = await mammoth.extractRawText({arrayBuffer:buf});
   return r.value;
@@ -7974,6 +8170,8 @@ function clearFile() {
   document.getElementById('m-prev').classList.remove('show');
   document.getElementById('m-snippet').classList.remove('show');
   document.getElementById('m-proc').classList.remove('show');
+  document.getElementById('m-doc-fallback').classList.remove('show');
+  document.getElementById('m-doc-paste').value = '';
   document.getElementById('m-name').value = '';
 }
 
@@ -7995,101 +8193,152 @@ async function processDirectFile(file, prefix) {
   }
   const confirmBox = document.getElementById(`direct-${prefix}-confirm`);
   const nameInput = document.getElementById(`direct-${prefix}-name`);
-  
+  const docFallback = document.getElementById(`direct-${prefix}-doc-fallback`);
+  if (docFallback) docFallback.classList.remove('show');
+
   try {
     let text = '';
     if (ext === 'pdf') text = await extractPDF(file);
     else if (ext === 'docx' || ext === 'doc') text = await extractDOCX(file);
     else text = await readTxt(file);
-    
+
     text = text.trim();
     if (text.length < 30) {
       alert('Could not extract text from file.');
       return;
     }
-    
+
     tempDirectCVText = text;
     const detectedName = guessCandidateName(text);
-    
+
     nameInput.value = detectedName || 'New Candidate';
     confirmBox.style.display = 'block';
     nameInput.focus();
   } catch (err) {
-    alert('Extraction Error: ' + err.message);
+    if (err.isLegacyDoc && docFallback) {
+      docFallback.classList.add('show');
+      const pasteArea = document.getElementById(`direct-${prefix}-doc-paste`);
+      if (pasteArea) pasteArea.focus();
+    } else {
+      alert('Extraction Error: ' + err.message);
+    }
   }
 }
 
-async function handleReplaceDrop(e) {
+function useDirectDocPasteFallback(prefix) {
+  const pasteArea = document.getElementById(`direct-${prefix}-doc-paste`);
+  const text = pasteArea.value.trim();
+  if (text.length < 30) {
+    alert('Please paste more of your CV text before continuing (at least a few lines).');
+    return;
+  }
+  document.getElementById(`direct-${prefix}-doc-fallback`).classList.remove('show');
+
+  tempDirectCVText = text;
+  const detectedName = guessCandidateName(text);
+  const nameInput = document.getElementById(`direct-${prefix}-name`);
+  nameInput.value = detectedName || 'New Candidate';
+  document.getElementById(`direct-${prefix}-confirm`).style.display = 'block';
+  nameInput.focus();
+}
+
+async function handleReplaceDrop(e, source) {
   e.preventDefault();
   e.currentTarget.classList.remove('drag');
-  if (e.dataTransfer.files[0]) await processReplaceFile(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files[0]) await processReplaceFile(e.dataTransfer.files[0], source);
 }
 
-async function handleReplaceFile(e) {
-  if (e.target.files[0]) await processReplaceFile(e.target.files[0]);
+async function handleReplaceFile(e, source) {
+  if (e.target.files[0]) await processReplaceFile(e.target.files[0], source);
 }
 
-async function processReplaceFile(file) {
+async function processReplaceFile(file, source) {
   if (!activeUserId) {
     alert("No active candidate profile selected.");
     return;
   }
-  
+
   const ext = file.name.split('.').pop().toLowerCase();
   if (!['pdf', 'doc', 'docx', 'txt'].includes(ext)) {
     alert('Invalid format. PDF, Word, or TXT only.');
     return;
   }
-  
+
+  const docFallback = source ? document.getElementById(`replace-cv-doc-fallback-${source}`) : null;
+  if (docFallback) docFallback.classList.remove('show');
+
   try {
     let text = '';
     if (ext === 'pdf') text = await extractPDF(file);
     else if (ext === 'docx' || ext === 'doc') text = await extractDOCX(file);
     else text = await readTxt(file);
-    
+
     text = text.trim();
     if (text.length < 30) {
       alert('Could not extract text from file.');
       return;
     }
-    
-    const user = users.find(u => u.id === activeUserId);
-    if (!user) {
-      alert("Active candidate profile not found.");
-      return;
-    }
-    
-    const confirmReplace = confirm(`Are you sure you want to replace the CV for "${user.name}"?\n\nThis will overwrite their current CV and regenerate all baseline documents and SWOT strategy.`);
-    if (!confirmReplace) return;
-    
-    // Update CV text
-    user.cv = text;
-    
-    // Clear old baseline documents and strategy so they get regenerated
-    user.baseline = {
-      personalStatement: '',
-      coverLetter: '',
-      baselineSTAR: ''
-    };
-    user.strategy = {
-      goals: '', strengths: '', weaknesses: '', opportunities: '', threats: '',
-      whyYouGeneral: '', whyYouSpecific: '', targetJD: ''
-    };
-    
-    saveUsersToStorage();
-    
-    // Refresh Sidebar and UI
-    renderSidebar();
-    selectUser(user.id);
-    
-    // Re-trigger both background analyses with the new CV
-    analyzeCareerStrategy(user.id);
-    generateBaselineDocuments(user.id);
-    
-    alert(`Successfully replaced CV for ${user.name}! The AI is now regenerating baseline summaries and SWOT analysis in the background.`);
+
+    await applyReplacedCVText(text);
   } catch (err) {
-    alert('CV Replacement Error: ' + err.message);
+    if (err.isLegacyDoc && docFallback) {
+      docFallback.classList.add('show');
+      const pasteArea = document.getElementById(`replace-cv-doc-paste-${source}`);
+      if (pasteArea) pasteArea.focus();
+    } else {
+      alert('CV Replacement Error: ' + err.message);
+    }
   }
+}
+
+// Shared by a successful file extraction and the .doc paste fallback, so both
+// commit the CV replacement identically.
+async function applyReplacedCVText(text) {
+  const user = users.find(u => u.id === activeUserId);
+  if (!user) {
+    alert("Active candidate profile not found.");
+    return;
+  }
+
+  const confirmReplace = confirm(`Are you sure you want to replace the CV for "${user.name}"?\n\nThis will overwrite their current CV and regenerate all baseline documents and SWOT strategy.`);
+  if (!confirmReplace) return;
+
+  // Update CV text
+  user.cv = text;
+
+  // Clear old baseline documents and strategy so they get regenerated
+  user.baseline = {
+    personalStatement: '',
+    coverLetter: '',
+    baselineSTAR: ''
+  };
+  user.strategy = {
+    goals: '', strengths: '', weaknesses: '', opportunities: '', threats: '',
+    whyYouGeneral: '', whyYouSpecific: '', targetJD: ''
+  };
+
+  saveUsersToStorage();
+
+  // Refresh Sidebar and UI
+  renderSidebar();
+  selectUser(user.id);
+
+  // Re-trigger both background analyses with the new CV
+  analyzeCareerStrategy(user.id);
+  generateBaselineDocuments(user.id);
+
+  alert(`Successfully replaced CV for ${user.name}! The AI is now regenerating baseline summaries and SWOT analysis in the background.`);
+}
+
+function useReplaceDocPasteFallback(source) {
+  const pasteArea = document.getElementById(`replace-cv-doc-paste-${source}`);
+  const text = pasteArea.value.trim();
+  if (text.length < 30) {
+    alert('Please paste more of your CV text before continuing (at least a few lines).');
+    return;
+  }
+  document.getElementById(`replace-cv-doc-fallback-${source}`).classList.remove('show');
+  applyReplacedCVText(text);
 }
 
 function removeUser(id, event) {
@@ -8932,7 +9181,7 @@ function renderMakersBadges() {
     return;
   }
   container.innerHTML = list.map(m => `
-    <span class="keyword-badge" style="cursor:default; background:rgba(255,255,255,0.06); color:#fff; border-color:var(--panel-border)">
+    <span class="keyword-badge" style="cursor:default; background:rgba(255,255,255,0.06); color:var(--text-primary); border-color:var(--panel-border)">
       ${m} <span onclick="removeDecisionMaker('${m}')" style="margin-left:6px; cursor:pointer; color:var(--danger)">✕</span>
     </span>
   `).join('');
@@ -9060,6 +9309,7 @@ function syncRoleFromSelect(val) {
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('coach-role');
   if (inp) inp.style.display = 'none';
+  applyThemeIcon();
 });
 
 function toggleCoachSetupFields() {
@@ -9408,7 +9658,7 @@ function renderMatrixDraft() {
     } else {
       optList.innerHTML = matrixDraft.options.map((opt, idx) => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--panel-border); border-radius:8px;">
-          <span style="font-size:13px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">${opt}</span>
+          <span style="font-size:13px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">${opt}</span>
           <button type="button" onclick="removeMatrixOptionDraft(${idx})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:13px; padding:2px 6px;">✕</button>
         </div>
       `).join('');
@@ -9425,9 +9675,9 @@ function renderMatrixDraft() {
         weightSum += c.weight;
         return `
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--panel-border); border-radius:8px;">
-            <span style="font-size:13px; color:#fff; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name}</span>
+            <span style="font-size:13px; color:var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name}</span>
             <div style="display:flex; align-items:center; gap:4px;">
-              <input type="number" value="${c.weight}" min="1" max="100" style="width:55px; padding:2px 4px; font-size:12px; text-align:center; background:rgba(0,0,0,0.3); border:1px solid var(--panel-border); border-radius:4px; color:#fff;" onchange="updateMatrixCriterionWeightDraft(${idx}, this.value)" />
+              <input type="number" value="${c.weight}" min="1" max="100" style="width:55px; padding:2px 4px; font-size:12px; text-align:center; background:rgba(0,0,0,0.3); border:1px solid var(--panel-border); border-radius:4px; color:var(--text-primary);" onchange="updateMatrixCriterionWeightDraft(${idx}, this.value)" />
               <span style="font-size:11px; color:var(--text-muted)">%</span>
             </div>
             <button type="button" onclick="removeMatrixCriterionDraft(${idx})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:13px; padding:2px 4px;">✕</button>
